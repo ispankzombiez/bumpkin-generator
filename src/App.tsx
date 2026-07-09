@@ -24,6 +24,25 @@ const AURA_FRAME_HEIGHT = 19
 const AURA_FRAME_COUNT = 8
 const AURA_FPS = 10
 
+const DEFAULT_LOADOUT: SelectedLoadout = {
+  background: 'Deep Sea Salt Cave Background',
+  hair: 'Two-toned Layered',
+  body: 'Pirate Potion',
+  shirt: 'Olive Royalty Shirt',
+  pants: 'Brown Suspenders',
+  shoes: 'Black Farmer Boots',
+  tool: 'Infernal Bullwhip',
+  hat: 'Deep Sea Helm',
+  necklace: 'Green Amulet',
+  secondaryTool: 'Infernal Drill',
+  aura: 'Wisp Aura',
+}
+
+function getInitialLoadout() {
+  const parsed = parseLoadoutFromSearch(window.location.search)
+  return Object.keys(parsed).length > 0 ? parsed : DEFAULT_LOADOUT
+}
+
 function AuraSprite({ src, className }: { src: string; className: string }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
 
@@ -104,9 +123,7 @@ function App() {
       : 'light'
   })
   const [catalog, setCatalog] = useState<SunflowerCatalog | null>(null)
-  const [selected, setSelected] = useState<SelectedLoadout>(() =>
-    parseLoadoutFromSearch(window.location.search),
-  )
+  const [selected, setSelected] = useState<SelectedLoadout>(() => getInitialLoadout())
   const [activeSlot, setActiveSlot] = useState<BumpkinSlot | null>(null)
   const [slotQuery, setSlotQuery] = useState('')
   const [failedIconFor, setFailedIconFor] = useState('')
