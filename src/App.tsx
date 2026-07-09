@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './App.css'
 import {
   SLOT_ORDER,
@@ -18,6 +18,81 @@ import {
 import { convertAnimatedWebpToGif } from './lib/gif'
 
 type ThemeMode = 'light' | 'dark'
+
+const AURA_FRAME_WIDTH = 20
+const AURA_FRAME_HEIGHT = 19
+const AURA_FRAME_COUNT = 8
+const AURA_FPS = 10
+
+function AuraSprite({ src, className }: { src: string; className: string }) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+
+  useEffect(() => {
+    if (!src) return
+
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const image = new Image()
+    image.crossOrigin = 'anonymous'
+
+    let frame = 0
+    let lastFrameAt = 0
+    let rafId = 0
+
+    const draw = () => {
+      ctx.clearRect(0, 0, AURA_FRAME_WIDTH, AURA_FRAME_HEIGHT)
+      ctx.drawImage(
+        image,
+        frame * AURA_FRAME_WIDTH,
+        0,
+        AURA_FRAME_WIDTH,
+        AURA_FRAME_HEIGHT,
+        0,
+        0,
+        AURA_FRAME_WIDTH,
+        AURA_FRAME_HEIGHT,
+      )
+    }
+
+    const tick = (timestamp: number) => {
+      const frameMs = 1000 / AURA_FPS
+      if (!lastFrameAt || timestamp - lastFrameAt >= frameMs) {
+        frame = (frame + 1) % AURA_FRAME_COUNT
+        lastFrameAt = timestamp
+        draw()
+      }
+
+      rafId = window.requestAnimationFrame(tick)
+    }
+
+    image.onload = () => {
+      frame = 0
+      draw()
+      rafId = window.requestAnimationFrame(tick)
+    }
+
+    image.src = src
+
+    return () => {
+      if (rafId) {
+        window.cancelAnimationFrame(rafId)
+      }
+    }
+  }, [src])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className={className}
+      width={AURA_FRAME_WIDTH}
+      height={AURA_FRAME_HEIGHT}
+    />
+  )
+}
 
 function App() {
   const [theme, setTheme] = useState<ThemeMode>(() => {
@@ -290,9 +365,9 @@ function App() {
                 {tokenUri ? (
                   <div className="preview-chibi-stack">
                     {!!auraUrls.backUrl && (
-                      <div
+                      <AuraSprite
+                        src={auraUrls.backUrl}
                         className="preview-aura-layer preview-aura-back"
-                        style={{ backgroundImage: `url(${auraUrls.backUrl})` }}
                       />
                     )}
                     <img
@@ -301,9 +376,9 @@ function App() {
                       className="preview-chibi-image"
                     />
                     {!!auraUrls.frontUrl && (
-                      <div
+                      <AuraSprite
+                        src={auraUrls.frontUrl}
                         className="preview-aura-layer preview-aura-front"
-                        style={{ backgroundImage: `url(${auraUrls.frontUrl})` }}
                       />
                     )}
                   </div>

@@ -207,12 +207,8 @@ h1 {
   left: 0;
   width: var(--sprite-width);
   height: var(--aura-frame-height);
-  background-repeat: no-repeat;
-  background-size: calc(var(--sprite-width) * 8) var(--aura-frame-height);
-  background-position: 0 0;
   image-rendering: pixelated;
   pointer-events: none;
-  animation: aura-frames 0.8s steps(8, end) infinite;
   transform-origin: center;
 }
 
@@ -229,16 +225,6 @@ h1 {
 .preview-icon-image {
   width: auto;
   height: var(--sprite-width);
-}
-
-@keyframes aura-frames {
-  from {
-    background-position: 0 0;
-  }
-
-  to {
-    background-position: calc(var(--sprite-width) * -7) 0;
-  }
 }
 
 .picker-backdrop {
