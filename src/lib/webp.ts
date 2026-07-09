@@ -218,8 +218,8 @@ export async function convertAnimatedWebpToCompositedWebp(
       delay: delayMs,
       x: 0,
       y: 0,
-      blend: true,
-      dispose: false,
+      blend: false,
+      dispose: true,
     })
 
     frames.push(webpFrame)
