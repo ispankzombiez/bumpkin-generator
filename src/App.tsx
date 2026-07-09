@@ -148,6 +148,27 @@ type PreviewPairProps = {
   disableIconAction?: boolean
 }
 
+type PreviewActionPayload = {
+  loadout: SelectedLoadout
+  chibiUrl: string
+  iconUrl: string
+  auraBackUrl: string
+  auraFrontUrl: string
+}
+
+type DownloadTarget = PreviewActionPayload & {
+  fileBaseName: string
+}
+
+function sanitizeFileName(value: string) {
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+  return slug || 'bumpkin'
+}
+
 function PreviewPair({
   loadout,
   catalog,
@@ -179,6 +200,15 @@ function PreviewPair({
   }, [catalog, loadout.aura])
   const auraUrls = useMemo(() => buildAuraUrls(auraId), [auraId])
   const iconLoadError = !!animations.iconUrl && iconErrorUrl === animations.iconUrl
+  const actionPayload: PreviewActionPayload | null = tokenUri
+    ? {
+        loadout,
+        chibiUrl: animations.chibiUrl,
+        iconUrl: animations.iconUrl,
+        auraBackUrl: auraUrls.backUrl,
+        auraFrontUrl: auraUrls.frontUrl,
+      }
+    : null
 
   return (
     <div
@@ -192,8 +222,8 @@ function PreviewPair({
             <button
               type="button"
               className="btn btn-ghost preview-card-action"
-              onClick={onChibiAction}
-              disabled={disableChibiAction}
+              onClick={() => actionPayload && onChibiAction()}
+              disabled={disableChibiAction || !actionPayload}
             >
               {chibiActionLabel}
             </button>
@@ -233,8 +263,8 @@ function PreviewPair({
             <button
               type="button"
               className="btn btn-ghost preview-card-action"
-              onClick={onIconAction}
-              disabled={disableIconAction}
+              onClick={() => actionPayload && onIconAction()}
+              disabled={disableIconAction || !actionPayload}
             >
               {iconActionLabel}
             </button>
@@ -289,6 +319,7 @@ function App() {
   const [convertingDownload, setConvertingDownload] = useState(false)
   const [gifError, setGifError] = useState('')
   const [gifScale, setGifScale] = useState(GIF_SCALE_DEFAULT)
+  const [downloadTarget, setDownloadTarget] = useState<DownloadTarget | null>(null)
 
   useEffect(() => {
     void loadCatalog()
@@ -405,6 +436,15 @@ function App() {
   }, [catalog, selected.aura])
   const auraUrls = useMemo(() => buildAuraUrls(auraId), [auraId])
   const showHeaderMiniBumpkin = !!animations.chibiUrl
+  const mainPreviewActionPayload: PreviewActionPayload | null = tokenUri
+    ? {
+        loadout: selected,
+        chibiUrl: animations.chibiUrl,
+        iconUrl: animations.iconUrl,
+        auraBackUrl: auraUrls.backUrl,
+        auraFrontUrl: auraUrls.frontUrl,
+      }
+    : null
 
   const visibleNpcPresets = useMemo(() => {
     const query = npcQuery.trim().toLowerCase()
@@ -477,11 +517,20 @@ function App() {
     URL.revokeObjectURL(blobUrl)
   }
 
+  function openChibiDownload(payload: PreviewActionPayload, fileBaseName: string) {
+    setDownloadTarget({ ...payload, fileBaseName })
+    setGifError('')
+    setGifScale(GIF_SCALE_DEFAULT)
+    setChibiDownloadOpen(true)
+  }
+
   function buildChibiExportOptions() {
+    if (!downloadTarget) return null
+
     return {
       scale: gifScale,
-      auraBackUrl: auraUrls.backUrl,
-      auraFrontUrl: auraUrls.frontUrl,
+      auraBackUrl: downloadTarget.auraBackUrl,
+      auraFrontUrl: downloadTarget.auraFrontUrl,
       auraFrameWidth: AURA_FRAME_WIDTH,
       auraFrameHeight: AURA_FRAME_HEIGHT,
       auraFrameCount: AURA_FRAME_COUNT,
@@ -492,22 +541,25 @@ function App() {
   }
 
   async function downloadChibiAsWebp() {
-    if (!animations.chibiUrl) return
+    if (!downloadTarget) return
+
+    const exportOptions = buildChibiExportOptions()
+    if (!exportOptions) return
 
     setConvertingDownload(true)
     setGifError('')
 
     try {
-      const response = await fetch(animations.chibiUrl)
+      const response = await fetch(downloadTarget.chibiUrl)
       if (!response.ok) throw new Error('Could not fetch chibi animation')
 
       const webpBlob = await response.blob()
       const compositedWebpBlob = await convertAnimatedWebpToCompositedWebp(
         webpBlob,
-        buildChibiExportOptions(),
+        exportOptions,
       )
 
-      downloadBlob(compositedWebpBlob, 'bumpkin-chibi.webp')
+      downloadBlob(compositedWebpBlob, `${downloadTarget.fileBaseName}-chibi.webp`)
       setChibiDownloadOpen(false)
     } catch {
       setGifError(
@@ -519,19 +571,22 @@ function App() {
   }
 
   async function downloadChibiAsGif() {
-    if (!animations.chibiUrl) return
+    if (!downloadTarget) return
+
+    const exportOptions = buildChibiExportOptions()
+    if (!exportOptions) return
 
     setConvertingDownload(true)
     setGifError('')
 
     try {
-      const response = await fetch(animations.chibiUrl)
+      const response = await fetch(downloadTarget.chibiUrl)
       if (!response.ok) throw new Error('Could not fetch chibi animation')
 
       const webpBlob = await response.blob()
-      const gifBlob = await convertAnimatedWebpToGif(webpBlob, buildChibiExportOptions())
+      const gifBlob = await convertAnimatedWebpToGif(webpBlob, exportOptions)
 
-      downloadBlob(gifBlob, 'bumpkin-chibi.gif')
+      downloadBlob(gifBlob, `${downloadTarget.fileBaseName}-chibi.gif`)
       setChibiDownloadOpen(false)
     } catch {
       setGifError(
@@ -703,12 +758,14 @@ function App() {
               onIconError={(url) => setFailedIconFor(url)}
               chibiActionLabel="Download"
               onChibiAction={() => {
-                setGifError('')
-                setGifScale(GIF_SCALE_DEFAULT)
-                setChibiDownloadOpen(true)
+                if (!mainPreviewActionPayload) return
+                openChibiDownload(mainPreviewActionPayload, 'bumpkin')
               }}
               iconActionLabel="Download"
-              onIconAction={() => void downloadImage(animations.iconUrl, 'bumpkin-icon.webp')}
+              onIconAction={() => {
+                if (!mainPreviewActionPayload) return
+                void downloadImage(mainPreviewActionPayload.iconUrl, 'bumpkin-icon.webp')
+              }}
               disableChibiAction={!tokenUri}
               disableIconAction={!tokenUri}
             />
@@ -794,6 +851,51 @@ function App() {
                         catalog={catalog}
                         sizePx={140}
                         compact
+                        chibiActionLabel="Download"
+                        onChibiAction={() => {
+                          if (!catalog) return
+
+                          const npcTokenUri = buildTokenUriFromSelection(
+                            preset.equipped,
+                            catalog.itemIds,
+                          )
+                          if (!npcTokenUri) return
+
+                          const npcAnimations = buildAnimationUrls(npcTokenUri)
+                          const npcAuraId = preset.equipped.aura
+                            ? (catalog.itemIds[preset.equipped.aura] ?? 0)
+                            : 0
+                          const npcAuraUrls = buildAuraUrls(npcAuraId)
+
+                          openChibiDownload(
+                            {
+                              loadout: preset.equipped,
+                              chibiUrl: npcAnimations.chibiUrl,
+                              iconUrl: npcAnimations.iconUrl,
+                              auraBackUrl: npcAuraUrls.backUrl,
+                              auraFrontUrl: npcAuraUrls.frontUrl,
+                            },
+                            `npc-${sanitizeFileName(preset.name)}`,
+                          )
+                        }}
+                        iconActionLabel="Download"
+                        onIconAction={() => {
+                          if (!catalog) return
+
+                          const npcTokenUri = buildTokenUriFromSelection(
+                            preset.equipped,
+                            catalog.itemIds,
+                          )
+                          if (!npcTokenUri) return
+
+                          const npcAnimations = buildAnimationUrls(npcTokenUri)
+                          void downloadImage(
+                            npcAnimations.iconUrl,
+                            `npc-${sanitizeFileName(preset.name)}-icon.webp`,
+                          )
+                        }}
+                        disableChibiAction={!catalog}
+                        disableIconAction={!catalog}
                       />
 
                       <div className="npc-card-actions">
@@ -934,7 +1036,7 @@ function App() {
 
             <div className="gif-controls">
               <label htmlFor="gif-scale-slider">
-                GIF Size: {gifScale}x
+                Export Size: {gifScale}x
               </label>
               <input
                 id="gif-scale-slider"
@@ -949,26 +1051,26 @@ function App() {
             </div>
 
             <div className="gif-preview-wrap">
-              <p className="meta-line">GIF Preview</p>
+              <p className="meta-line">Preview</p>
               <div className="gif-live-preview-stage">
                 <div
                   className="preview-chibi-stack gif-live-preview-stack"
                   style={{ ['--sprite-width' as string]: `${70 * gifScale}px` }}
                 >
-                  {!!auraUrls.backUrl && (
+                  {!!downloadTarget?.auraBackUrl && (
                     <AuraSprite
-                      src={auraUrls.backUrl}
+                      src={downloadTarget.auraBackUrl}
                       className="preview-aura-layer preview-aura-back"
                     />
                   )}
                   <img
-                    src={animations.chibiUrl}
+                    src={downloadTarget?.chibiUrl ?? ''}
                     alt="GIF preview"
                     className="preview-chibi-image"
                   />
-                  {!!auraUrls.frontUrl && (
+                  {!!downloadTarget?.auraFrontUrl && (
                     <AuraSprite
-                      src={auraUrls.frontUrl}
+                      src={downloadTarget.auraFrontUrl}
                       className="preview-aura-layer preview-aura-front"
                     />
                   )}
