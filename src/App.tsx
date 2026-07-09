@@ -42,6 +42,16 @@ const DEFAULT_LOADOUT: SelectedLoadout = {
   aura: 'Wisp Aura',
 }
 
+function getInitialTab(): AppTab {
+  const params = new URLSearchParams(window.location.search)
+  return params.get('tab') === 'npcs' ? 'npcs' : 'main'
+}
+
+function getInitialNpcQuery() {
+  const params = new URLSearchParams(window.location.search)
+  return params.get('npc')?.trim() ?? ''
+}
+
 function getInitialLoadout() {
   const parsed = parseLoadoutFromSearch(window.location.search)
   return Object.keys(parsed).length > 0 ? parsed : DEFAULT_LOADOUT
@@ -220,13 +230,13 @@ function App() {
       ? 'dark'
       : 'light'
   })
-  const [activeTab, setActiveTab] = useState<AppTab>('main')
+  const [activeTab, setActiveTab] = useState<AppTab>(() => getInitialTab())
   const [catalog, setCatalog] = useState<SunflowerCatalog | null>(null)
   const [selected, setSelected] = useState<SelectedLoadout>(() => getInitialLoadout())
   const [npcPresets, setNpcPresets] = useState<SunflowerNpcPreset[]>([])
   const [npcLoading, setNpcLoading] = useState(true)
   const [npcError, setNpcError] = useState('')
-  const [npcQuery, setNpcQuery] = useState('')
+  const [npcQuery, setNpcQuery] = useState(() => getInitialNpcQuery())
   const [activeSlot, setActiveSlot] = useState<BumpkinSlot | null>(null)
   const [slotQuery, setSlotQuery] = useState('')
   const [failedIconFor, setFailedIconFor] = useState('')
@@ -254,11 +264,26 @@ function App() {
   }, [theme])
 
   useEffect(() => {
-    const search = buildSearchFromLoadout(selected)
-    const query = search ? `?${search}` : ''
-    const next = `${window.location.pathname}${query}${window.location.hash}`
+    const params = new URLSearchParams()
+
+    if (activeTab === 'npcs') {
+      params.set('tab', 'npcs')
+      if (npcQuery.trim()) {
+        params.set('npc', npcQuery.trim())
+      }
+    } else {
+      const search = buildSearchFromLoadout(selected)
+      const loadoutParams = new URLSearchParams(search)
+
+      for (const [key, value] of loadoutParams.entries()) {
+        params.set(key, value)
+      }
+    }
+
+    const query = params.toString()
+    const next = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`
     window.history.replaceState(null, '', next)
-  }, [selected])
+  }, [selected, activeTab, npcQuery])
 
   async function loadCatalog(forceRefresh = false) {
     setLoading(true)
@@ -309,6 +334,7 @@ function App() {
   function applyLoadout(nextLoadout: SelectedLoadout) {
     setSelected(nextLoadout)
     setActiveTab('main')
+    setNpcQuery('')
     setActiveSlot(null)
     setSlotQuery('')
     setFailedIconFor('')
@@ -508,7 +534,10 @@ function App() {
           role="tab"
           aria-selected={activeTab === 'main'}
           className={`tab-button ${activeTab === 'main' ? 'active' : ''}`}
-          onClick={() => setActiveTab('main')}
+          onClick={() => {
+            setActiveTab('main')
+            setNpcQuery('')
+          }}
         >
           Main
         </button>
