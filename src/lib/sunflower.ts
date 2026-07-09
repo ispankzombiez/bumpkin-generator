@@ -258,85 +258,16 @@ function writeCachedCatalog(catalog: SunflowerCatalog) {
 }
 
 function parseNpcPresets(objectLiteral: string): SunflowerNpcPreset[] {
-  const body = stripComments(objectLiteral.slice(1, -1))
-  const presets: SunflowerNpcPreset[] = []
+  const normalized = stripComments(objectLiteral)
+    .replace(/([{,]\s*)([A-Za-z0-9_]+)\s*:/g, '$1"$2":')
+    .replace(/,\s*}/g, '}')
 
-  let index = 0
-  while (index < body.length) {
-    while (index < body.length && /[\s,]/.test(body[index]!)) index++
-    if (index >= body.length) break
+  const parsed = JSON.parse(normalized) as Record<string, Partial<Record<BumpkinSlot, string>>>
 
-    const key = readObjectKey(body, index)
-    index = key.nextIndex
-
-    while (index < body.length && /\s/.test(body[index]!)) index++
-    if (body[index] !== ':') {
-      throw new Error(`Invalid NPC object entry for ${key.value}`)
-    }
-
-    index++
-    while (index < body.length && /\s/.test(body[index]!)) index++
-    if (body[index] !== '{') {
-      throw new Error(`Missing NPC wearables object for ${key.value}`)
-    }
-
-    const endIndex = findMatchingBrace(body, index)
-    const nestedLiteral = body.slice(index, endIndex + 1)
-    const equipped = parseFlatObject(nestedLiteral, 'string') as Partial<Record<
-      BumpkinSlot,
-      string
-    >>
-
-    presets.push({ name: key.value, equipped })
-    index = endIndex + 1
-  }
-
-  return presets
-}
-
-function readObjectKey(source: string, startIndex: number) {
-  let index = startIndex
-
-  if (source[index] === '"' || source[index] === "'") {
-    const quote = source[index]!
-    index++
-    const keyStart = index
-
-    while (index < source.length && source[index] !== quote) index++
-    if (index >= source.length) {
-      throw new Error('Unterminated NPC key string')
-    }
-
-    return {
-      value: source.slice(keyStart, index),
-      nextIndex: index + 1,
-    }
-  }
-
-  const keyStart = index
-  while (index < source.length && source[index] !== ':') index++
-  if (index >= source.length) {
-    throw new Error('Unterminated NPC key token')
-  }
-
-  return {
-    value: source.slice(keyStart, index).trim(),
-    nextIndex: index,
-  }
-}
-
-function findMatchingBrace(source: string, openIndex: number) {
-  let depth = 0
-  for (let index = openIndex; index < source.length; index++) {
-    const character = source[index]
-    if (character === '{') depth++
-    if (character === '}') {
-      depth--
-      if (depth === 0) return index
-    }
-  }
-
-  throw new Error('Unterminated NPC object literal')
+  return Object.entries(parsed).map(([name, equipped]) => ({
+    name,
+    equipped,
+  }))
 }
 
 function stripComments(source: string) {
