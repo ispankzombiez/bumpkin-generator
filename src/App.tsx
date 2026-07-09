@@ -333,7 +333,7 @@ function App() {
                     key={animations.iconUrl}
                     src={animations.iconUrl}
                     alt="Bumpkin player icon preview"
-                    className="preview-image"
+                    className="preview-image preview-icon-image"
                     onError={() => setFailedIconFor(animations.iconUrl)}
                   />
                 ) : (

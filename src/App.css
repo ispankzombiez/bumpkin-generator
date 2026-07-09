@@ -186,16 +186,16 @@ h1 {
 
 .preview-chibi-stack {
   position: relative;
-  width: 210px;
-  height: 210px;
+  width: 180px;
+  height: 180px;
   display: grid;
   place-items: center;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .preview-chibi-image {
-  width: 180px;
-  height: 180px;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
 }
 
@@ -203,8 +203,8 @@ h1 {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 210px;
-  height: 210px;
+  width: 180px;
+  height: 180px;
   background-repeat: no-repeat;
   background-size: 800% 100%;
   background-position: 0 0;
@@ -215,11 +215,15 @@ h1 {
 }
 
 .preview-aura-back {
-  transform: translate(-50%, -58%) scale(0.7);
+  transform: translate(-50%, -71%);
 }
 
 .preview-aura-front {
-  transform: translate(-50%, -40%) scale(0.7);
+  transform: translate(-50%, -36%);
+}
+
+.preview-icon-image {
+  height: 180px;
 }
 
 @keyframes aura-frames {
