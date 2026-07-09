@@ -19,6 +19,7 @@ import {
   type SelectedLoadout,
 } from './lib/bumpkin'
 import { convertAnimatedWebpToGif } from './lib/gif'
+import { convertAnimatedWebpToCompositedWebp } from './lib/webp'
 
 type ThemeMode = 'light' | 'dark'
 type AppTab = 'main' | 'npcs'
@@ -139,6 +140,12 @@ type PreviewPairProps = {
   iconTitle?: string
   iconErrorUrl?: string
   onIconError?: (url: string) => void
+  chibiActionLabel?: string
+  onChibiAction?: () => void
+  iconActionLabel?: string
+  onIconAction?: () => void
+  disableChibiAction?: boolean
+  disableIconAction?: boolean
 }
 
 function PreviewPair({
@@ -150,6 +157,12 @@ function PreviewPair({
   iconTitle = 'Player Icon',
   iconErrorUrl,
   onIconError,
+  chibiActionLabel,
+  onChibiAction,
+  iconActionLabel,
+  onIconAction,
+  disableChibiAction = false,
+  disableIconAction = false,
 }: PreviewPairProps) {
   const tokenUri = useMemo(() => {
     if (!catalog) return ''
@@ -173,7 +186,19 @@ function PreviewPair({
       style={{ ['--sprite-width' as string]: `${sizePx}px` }}
     >
       <article className={`preview-card ${compact ? 'preview-card-compact' : ''}`}>
-        <h3>{chibiTitle}</h3>
+        <div className="preview-card-head">
+          <h3>{chibiTitle}</h3>
+          {chibiActionLabel && onChibiAction && (
+            <button
+              type="button"
+              className="btn btn-ghost preview-card-action"
+              onClick={onChibiAction}
+              disabled={disableChibiAction}
+            >
+              {chibiActionLabel}
+            </button>
+          )}
+        </div>
         <div className="preview-media">
           {tokenUri ? (
             <div className="preview-chibi-stack">
@@ -202,7 +227,19 @@ function PreviewPair({
       </article>
 
       <article className={`preview-card ${compact ? 'preview-card-compact' : ''}`}>
-        <h3>{iconTitle}</h3>
+        <div className="preview-card-head">
+          <h3>{iconTitle}</h3>
+          {iconActionLabel && onIconAction && (
+            <button
+              type="button"
+              className="btn btn-ghost preview-card-action"
+              onClick={onIconAction}
+              disabled={disableIconAction}
+            >
+              {iconActionLabel}
+            </button>
+          )}
+        </div>
         <div className="preview-media">
           {tokenUri && !iconLoadError ? (
             <img
@@ -249,7 +286,7 @@ function App() {
   const [copied, setCopied] = useState(false)
   const [copiedShare, setCopiedShare] = useState(false)
   const [chibiDownloadOpen, setChibiDownloadOpen] = useState(false)
-  const [convertingGif, setConvertingGif] = useState(false)
+  const [convertingDownload, setConvertingDownload] = useState(false)
   const [gifError, setGifError] = useState('')
   const [gifScale, setGifScale] = useState(GIF_SCALE_DEFAULT)
 
@@ -440,10 +477,24 @@ function App() {
     URL.revokeObjectURL(blobUrl)
   }
 
-  async function downloadChibiAsGif() {
+  function buildChibiExportOptions() {
+    return {
+      scale: gifScale,
+      auraBackUrl: auraUrls.backUrl,
+      auraFrontUrl: auraUrls.frontUrl,
+      auraFrameWidth: AURA_FRAME_WIDTH,
+      auraFrameHeight: AURA_FRAME_HEIGHT,
+      auraFrameCount: AURA_FRAME_COUNT,
+      auraFps: AURA_FPS,
+      auraBackTopRatio: -0.21,
+      auraFrontTopRatio: 0.14,
+    }
+  }
+
+  async function downloadChibiAsWebp() {
     if (!animations.chibiUrl) return
 
-    setConvertingGif(true)
+    setConvertingDownload(true)
     setGifError('')
 
     try {
@@ -451,17 +502,34 @@ function App() {
       if (!response.ok) throw new Error('Could not fetch chibi animation')
 
       const webpBlob = await response.blob()
-      const gifBlob = await convertAnimatedWebpToGif(webpBlob, {
-        scale: gifScale,
-        auraBackUrl: auraUrls.backUrl,
-        auraFrontUrl: auraUrls.frontUrl,
-        auraFrameWidth: AURA_FRAME_WIDTH,
-        auraFrameHeight: AURA_FRAME_HEIGHT,
-        auraFrameCount: AURA_FRAME_COUNT,
-        auraFps: AURA_FPS,
-        auraBackTopRatio: -0.21,
-        auraFrontTopRatio: 0.14,
-      })
+      const compositedWebpBlob = await convertAnimatedWebpToCompositedWebp(
+        webpBlob,
+        buildChibiExportOptions(),
+      )
+
+      downloadBlob(compositedWebpBlob, 'bumpkin-chibi.webp')
+      setChibiDownloadOpen(false)
+    } catch {
+      setGifError(
+        'WebP conversion failed in this browser. Try Chrome/Edge, or use GIF for now.',
+      )
+    } finally {
+      setConvertingDownload(false)
+    }
+  }
+
+  async function downloadChibiAsGif() {
+    if (!animations.chibiUrl) return
+
+    setConvertingDownload(true)
+    setGifError('')
+
+    try {
+      const response = await fetch(animations.chibiUrl)
+      if (!response.ok) throw new Error('Could not fetch chibi animation')
+
+      const webpBlob = await response.blob()
+      const gifBlob = await convertAnimatedWebpToGif(webpBlob, buildChibiExportOptions())
 
       downloadBlob(gifBlob, 'bumpkin-chibi.gif')
       setChibiDownloadOpen(false)
@@ -470,7 +538,7 @@ function App() {
         'GIF conversion failed in this browser. Try Chrome/Edge, or use WebP for now.',
       )
     } finally {
-      setConvertingGif(false)
+      setConvertingDownload(false)
     }
   }
 
@@ -633,6 +701,16 @@ function App() {
               sizePx={180}
               iconErrorUrl={failedIconFor}
               onIconError={(url) => setFailedIconFor(url)}
+              chibiActionLabel="Download"
+              onChibiAction={() => {
+                setGifError('')
+                setGifScale(GIF_SCALE_DEFAULT)
+                setChibiDownloadOpen(true)
+              }}
+              iconActionLabel="Download"
+              onIconAction={() => void downloadImage(animations.iconUrl, 'bumpkin-icon.webp')}
+              disableChibiAction={!tokenUri}
+              disableIconAction={!tokenUri}
             />
 
             <div className="token-actions">
@@ -650,26 +728,6 @@ function App() {
                 onClick={() => void copyShareLink()}
               >
                 {copiedShare ? 'Link Copied' : 'Copy Share Link'}
-              </button>
-              <button
-                type="button"
-                className="btn"
-                disabled={!tokenUri}
-                onClick={() => {
-                  setGifError('')
-                  setGifScale(GIF_SCALE_DEFAULT)
-                  setChibiDownloadOpen(true)
-                }}
-              >
-                Download Chibi
-              </button>
-              <button
-                type="button"
-                className="btn"
-                disabled={!tokenUri}
-                onClick={() => void downloadImage(animations.iconUrl, 'bumpkin-icon.webp')}
-              >
-                Download Icon
               </button>
               <a
                 className="btn btn-ghost"
@@ -839,7 +897,7 @@ function App() {
         <div
           className="picker-backdrop"
           onClick={() => {
-            if (!convertingGif) setChibiDownloadOpen(false)
+            if (!convertingDownload) setChibiDownloadOpen(false)
           }}
         >
           <div className="picker-modal" onClick={(event) => event.stopPropagation()}>
@@ -849,7 +907,7 @@ function App() {
                 type="button"
                 className="btn btn-ghost"
                 onClick={() => setChibiDownloadOpen(false)}
-                disabled={convertingGif}
+                disabled={convertingDownload}
               >
                 Close
               </button>
@@ -859,21 +917,18 @@ function App() {
               <button
                 type="button"
                 className="btn"
-                onClick={() => {
-                  void downloadImage(animations.chibiUrl, 'bumpkin-chibi.webp')
-                  setChibiDownloadOpen(false)
-                }}
-                disabled={convertingGif}
+                onClick={() => void downloadChibiAsWebp()}
+                disabled={convertingDownload}
               >
-                WebP (Animated)
+                {convertingDownload ? 'Preparing...' : 'WebP (Animated)'}
               </button>
               <button
                 type="button"
                 className="btn"
                 onClick={() => void downloadChibiAsGif()}
-                disabled={convertingGif}
+                disabled={convertingDownload}
               >
-                {convertingGif ? 'Converting...' : 'GIF (Converted)'}
+                {convertingDownload ? 'Converting...' : 'GIF (Converted)'}
               </button>
             </div>
 
@@ -889,7 +944,7 @@ function App() {
                 step={1}
                 value={gifScale}
                 onChange={(event) => setGifScale(Number(event.target.value))}
-                disabled={convertingGif}
+                disabled={convertingDownload}
               />
             </div>
 
