@@ -181,8 +181,8 @@ h1 {
   max-width: 100%;
   image-rendering: pixelated;
   border-radius: 0.5rem;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.08);
+  border: 0;
+  background: transparent;
 }
 
 .preview-chibi-stack {
@@ -199,7 +199,7 @@ h1 {
   left: 0;
   top: 0;
   width: var(--sprite-width);
-  height: auto;
+  height: calc(var(--sprite-width) * 19 / 20);
   object-fit: initial;
 }
 
@@ -228,8 +228,8 @@ h1 {
 }
 
 .preview-icon-image {
-  width: var(--sprite-width);
-  height: auto;
+  width: auto;
+  height: calc(var(--sprite-width) * 19 / 20);
 }
 
 @keyframes aura-frames {
