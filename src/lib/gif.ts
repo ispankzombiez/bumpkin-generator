@@ -1,64 +1,77 @@
-import { FFmpeg } from '@ffmpeg/ffmpeg'
-import { fetchFile, toBlobURL } from '@ffmpeg/util'
-
-let ffmpeg: FFmpeg | null = null
-let loadingPromise: Promise<void> | null = null
-
-async function ensureFfmpegLoaded() {
-  if (!ffmpeg) {
-    ffmpeg = new FFmpeg()
-  }
-
-  if (!loadingPromise) {
-    const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.10/dist/esm'
-
-    loadingPromise = (async () => {
-      await ffmpeg!.load({
-        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-      })
-    })()
-  }
-
-  await loadingPromise
-  return ffmpeg
-}
+import { GIFEncoder, applyPalette, quantize } from 'gifenc'
 
 export async function convertAnimatedWebpToGif(webpBlob: Blob) {
-  const ffmpegInstance = await ensureFfmpegLoaded()
+  const ImageDecoderCtor = window.ImageDecoder
 
-  const inputFile = `input-${Date.now()}.webp`
-  const outputFile = `output-${Date.now()}.gif`
+  if (!ImageDecoderCtor) {
+    throw new Error('ImageDecoder is not available in this browser')
+  }
 
-  await ffmpegInstance.writeFile(inputFile, await fetchFile(webpBlob))
+  const data = await webpBlob.arrayBuffer()
+  const decoder = new ImageDecoderCtor({
+    data,
+    type: 'image/webp',
+  })
 
-  await ffmpegInstance.exec([
-    '-i',
-    inputFile,
-    '-vf',
-    'fps=15,scale=iw:-1:flags=lanczos',
-    '-loop',
-    '0',
-    outputFile,
-  ])
+  await decoder.tracks.ready
 
-  const data = await ffmpegInstance.readFile(outputFile)
-  const rawBytes =
-    data instanceof Uint8Array
-      ? new Uint8Array(data)
-      : new TextEncoder().encode(String(data))
+  const track = decoder.tracks.selectedTrack
+  const frameCount = Math.max(1, track?.frameCount ?? 1)
 
-  if (rawBytes.byteLength === 0) {
+  const firstDecoded = await decoder.decode({ frameIndex: 0 })
+  const firstFrame = firstDecoded.image
+  const width = firstFrame.displayWidth || firstFrame.codedWidth || 0
+  const height = firstFrame.displayHeight || firstFrame.codedHeight || 0
+
+  if (!width || !height) {
+    firstFrame.close()
+    throw new Error('Invalid frame dimensions from decoder')
+  }
+
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+
+  const context = canvas.getContext('2d', { willReadFrequently: true })
+  if (!context) {
+    throw new Error('Could not initialize canvas context')
+  }
+
+  const gif = GIFEncoder()
+
+  for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
+    const result =
+      frameIndex === 0 ? firstDecoded : await decoder.decode({ frameIndex })
+    const frame = result.image
+
+    context.clearRect(0, 0, width, height)
+    context.drawImage(frame, 0, 0, width, height)
+
+    const imageData = context.getImageData(0, 0, width, height)
+    const palette = quantize(imageData.data, 256)
+    const indexedFrame = applyPalette(imageData.data, palette)
+
+    const frameDurationUs = typeof frame.duration === 'number' ? frame.duration : 100000
+    const delayMs = Math.max(20, Math.round(frameDurationUs / 1000))
+
+    gif.writeFrame(indexedFrame, width, height, {
+      palette,
+      delay: delayMs,
+      repeat: 0,
+    })
+
+    frame.close()
+  }
+
+  gif.finish()
+  const bytes = gif.bytes()
+
+  if (!bytes || bytes.byteLength === 0) {
     throw new Error('GIF conversion produced an empty file')
   }
 
-  // Copy bytes into a fresh ArrayBuffer-backed Uint8Array to avoid browser
-  // issues with non-standard backing buffers.
-  const bytes = new Uint8Array(rawBytes.byteLength)
-  bytes.set(rawBytes)
+  const safeBytes = new Uint8Array(bytes.byteLength)
+  safeBytes.set(bytes)
 
-  await ffmpegInstance.deleteFile(inputFile)
-  await ffmpegInstance.deleteFile(outputFile)
-
-  return new Blob([bytes], { type: 'image/gif' })
+  return new Blob([safeBytes.buffer], { type: 'image/gif' })
 }

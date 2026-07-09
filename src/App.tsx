@@ -171,7 +171,9 @@ function App() {
       downloadBlob(gifBlob, 'bumpkin-chibi.gif')
       setChibiDownloadOpen(false)
     } catch {
-      setGifError('GIF conversion failed on this browser. Try WebP for now.')
+      setGifError(
+        'GIF conversion failed in this browser. Try Chrome/Edge, or use WebP for now.',
+      )
     } finally {
       setConvertingGif(false)
     }
