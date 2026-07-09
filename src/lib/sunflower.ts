@@ -259,6 +259,7 @@ function writeCachedCatalog(catalog: SunflowerCatalog) {
 
 function parseNpcPresets(objectLiteral: string): SunflowerNpcPreset[] {
   const normalized = stripComments(objectLiteral)
+    .replace(/;\s*$/, '')
     .replace(/([{,]\s*)([A-Za-z0-9_]+)\s*:/g, '$1"$2":')
     .replace(/,\s*}/g, '}')
 
