@@ -43,13 +43,22 @@ export async function convertAnimatedWebpToGif(webpBlob: Blob) {
   ])
 
   const data = await ffmpegInstance.readFile(outputFile)
-  const bytes =
+  const rawBytes =
     data instanceof Uint8Array
       ? new Uint8Array(data)
       : new TextEncoder().encode(String(data))
 
+  if (rawBytes.byteLength === 0) {
+    throw new Error('GIF conversion produced an empty file')
+  }
+
+  // Copy bytes into a fresh ArrayBuffer-backed Uint8Array to avoid browser
+  // issues with non-standard backing buffers.
+  const bytes = new Uint8Array(rawBytes.byteLength)
+  bytes.set(rawBytes)
+
   await ffmpegInstance.deleteFile(inputFile)
   await ffmpegInstance.deleteFile(outputFile)
 
-  return new Blob([bytes.buffer], { type: 'image/gif' })
+  return new Blob([bytes], { type: 'image/gif' })
 }
