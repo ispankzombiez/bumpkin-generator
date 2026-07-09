@@ -14,6 +14,7 @@ import {
   SLOT_LABELS,
   type SelectedLoadout,
 } from './lib/bumpkin'
+import { convertAnimatedWebpToGif } from './lib/gif'
 
 type ThemeMode = 'light' | 'dark'
 
@@ -37,6 +38,9 @@ function App() {
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
   const [copiedShare, setCopiedShare] = useState(false)
+  const [chibiDownloadOpen, setChibiDownloadOpen] = useState(false)
+  const [convertingGif, setConvertingGif] = useState(false)
+  const [gifError, setGifError] = useState('')
 
   useEffect(() => {
     void loadCatalog()
@@ -134,16 +138,42 @@ function App() {
       if (!response.ok) throw new Error('Asset download failed')
 
       const blob = await response.blob()
-      const blobUrl = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = blobUrl
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      link.remove()
-      URL.revokeObjectURL(blobUrl)
+      downloadBlob(blob, filename)
     } catch {
       window.open(url, '_blank', 'noopener,noreferrer')
+    }
+  }
+
+  function downloadBlob(blob: Blob, filename: string) {
+    const blobUrl = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(blobUrl)
+  }
+
+  async function downloadChibiAsGif() {
+    if (!animations.chibiUrl) return
+
+    setConvertingGif(true)
+    setGifError('')
+
+    try {
+      const response = await fetch(animations.chibiUrl)
+      if (!response.ok) throw new Error('Could not fetch chibi animation')
+
+      const webpBlob = await response.blob()
+      const gifBlob = await convertAnimatedWebpToGif(webpBlob)
+
+      downloadBlob(gifBlob, 'bumpkin-chibi.gif')
+      setChibiDownloadOpen(false)
+    } catch {
+      setGifError('GIF conversion failed on this browser. Try WebP for now.')
+    } finally {
+      setConvertingGif(false)
     }
   }
 
@@ -243,43 +273,50 @@ function App() {
 
           <div className="preview-grid">
             <article className="preview-card">
-              <h3>Chibi (idle-small)</h3>
-              {tokenUri ? (
-                <img
-                  src={animations.chibiUrl}
-                  alt="Bumpkin chibi preview"
-                  className="preview-image"
-                />
-              ) : (
-                <p className="placeholder">Equip at least one item to preview.</p>
-              )}
+              <h3>Chibi</h3>
+              <div className="preview-media">
+                {tokenUri ? (
+                  <img
+                    src={animations.chibiUrl}
+                    alt="Bumpkin chibi preview"
+                    className="preview-image"
+                  />
+                ) : (
+                  <p className="placeholder">Equip at least one item to preview.</p>
+                )}
+              </div>
               <button
                 type="button"
                 className="btn"
                 disabled={!tokenUri}
-                onClick={() => void downloadImage(animations.chibiUrl, 'bumpkin-chibi.webp')}
+                onClick={() => {
+                  setGifError('')
+                  setChibiDownloadOpen(true)
+                }}
               >
                 Download Chibi
               </button>
             </article>
 
             <article className="preview-card">
-              <h3>Player Icon (idle)</h3>
-              {tokenUri && !iconLoadError ? (
-                <img
-                  key={animations.iconUrl}
-                  src={animations.iconUrl}
-                  alt="Bumpkin player icon preview"
-                  className="preview-image"
-                  onError={() => setFailedIconFor(animations.iconUrl)}
-                />
-              ) : (
-                <p className="placeholder">
-                  {tokenUri
-                    ? 'Player icon endpoint returned no image for this loadout.'
-                    : 'Equip at least one item to preview.'}
-                </p>
-              )}
+              <h3>Player Icon</h3>
+              <div className="preview-media">
+                {tokenUri && !iconLoadError ? (
+                  <img
+                    key={animations.iconUrl}
+                    src={animations.iconUrl}
+                    alt="Bumpkin player icon preview"
+                    className="preview-image"
+                    onError={() => setFailedIconFor(animations.iconUrl)}
+                  />
+                ) : (
+                  <p className="placeholder">
+                    {tokenUri
+                      ? 'Player icon endpoint returned no image for this loadout.'
+                      : 'Equip at least one item to preview.'}
+                  </p>
+                )}
+              </div>
               <button
                 type="button"
                 className="btn"
@@ -386,6 +423,53 @@ function App() {
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {chibiDownloadOpen && (
+        <div
+          className="picker-backdrop"
+          onClick={() => {
+            if (!convertingGif) setChibiDownloadOpen(false)
+          }}
+        >
+          <div className="picker-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="picker-head">
+              <h3>Download Chibi As</h3>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => setChibiDownloadOpen(false)}
+                disabled={convertingGif}
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="download-format-grid">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  void downloadImage(animations.chibiUrl, 'bumpkin-chibi.webp')
+                  setChibiDownloadOpen(false)
+                }}
+                disabled={convertingGif}
+              >
+                WebP (Animated)
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => void downloadChibiAsGif()}
+                disabled={convertingGif}
+              >
+                {convertingGif ? 'Converting...' : 'GIF (Converted)'}
+              </button>
+            </div>
+
+            {!!gifError && <p className="error-banner">{gifError}</p>}
           </div>
         </div>
       )}

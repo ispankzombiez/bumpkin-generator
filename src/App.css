@@ -161,8 +161,16 @@ h1 {
   font-size: 0.95rem;
 }
 
+.preview-media {
+  min-height: 190px;
+  display: grid;
+  place-items: center;
+}
+
 .preview-image {
-  width: 100%;
+  height: 180px;
+  width: auto;
+  max-width: 100%;
   image-rendering: pixelated;
   border-radius: 0.5rem;
   border: 1px solid var(--border);
@@ -220,6 +228,12 @@ h1 {
 .picker-item.active {
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.download-format-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
 }
 
 .placeholder {
@@ -305,7 +319,16 @@ h1 {
 
   .slot-grid,
   .preview-grid,
-  .picker-list {
+  .picker-list,
+  .download-format-grid {
     grid-template-columns: 1fr;
+  }
+
+  .preview-media {
+    min-height: 170px;
+  }
+
+  .preview-image {
+    height: 160px;
   }
 }
