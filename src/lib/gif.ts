@@ -63,8 +63,10 @@ export async function convertAnimatedWebpToGif(
   const sourceWidth = firstFrame.displayWidth || firstFrame.codedWidth || 0
   const sourceHeight = firstFrame.displayHeight || firstFrame.codedHeight || 0
   const scale = Math.max(1, Math.floor(options.scale ?? 1))
-  const width = sourceWidth * scale
-  const height = sourceHeight * scale
+  const baseSize = Math.max(sourceWidth, sourceHeight)
+  const width = baseSize * scale
+  const height = baseSize * scale
+  const chibiHeight = Math.round((sourceHeight / sourceWidth) * width)
 
   if (!width || !height) {
     firstFrame.close()
@@ -86,6 +88,7 @@ export async function convertAnimatedWebpToGif(
   const auraFps = options.auraFps ?? 10
   const auraBackTopRatio = options.auraBackTopRatio ?? -0.21
   const auraFrontTopRatio = options.auraFrontTopRatio ?? 0.14
+  const auraRenderHeight = Math.round((auraFrameHeight / auraFrameWidth) * width)
 
   const [auraBackImage, auraFrontImage] = await Promise.all([
     options.auraBackUrl
@@ -113,7 +116,7 @@ export async function convertAnimatedWebpToGif(
       0,
       width * topRatio,
       width,
-      height,
+      auraRenderHeight,
     )
   }
 
@@ -131,7 +134,7 @@ export async function convertAnimatedWebpToGif(
       drawAuraLayer(auraBackImage, auraBackTopRatio, elapsedMs)
     }
 
-    context.drawImage(frame, 0, 0, width, height)
+    context.drawImage(frame, 0, 0, width, chibiHeight)
 
     if (auraFrontImage) {
       drawAuraLayer(auraFrontImage, auraFrontTopRatio, elapsedMs)
