@@ -40,7 +40,7 @@ h1 {
 }
 
 .title-mini-stack {
-  --title-mini-width: 18px;
+  --title-mini-width: 24px;
   --title-mini-height: calc(var(--title-mini-width) * 19 / 20);
   position: relative;
   width: var(--title-mini-width);
