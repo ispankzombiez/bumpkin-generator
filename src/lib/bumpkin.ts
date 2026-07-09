@@ -46,7 +46,7 @@ export const SLOT_LABELS: Record<BumpkinSlot, string> = {
   mouth: 'Mouth',
 }
 
-const ANIMATION_BASE_URL = 'https://animations.sunflower-land.com/animate'
+const ANIMATION_BASE_URL = 'https://animations.sunflower-land.com/animated_webp'
 const PROFILE_ICON_BASE_URL = 'https://animations.sunflower-land.com/bumpkin_image'
 
 export function buildTokenUriFromSelection(
