@@ -692,7 +692,7 @@ function App() {
                       <PreviewPair
                         loadout={preset.equipped}
                         catalog={catalog}
-                        sizePx={120}
+                        sizePx={140}
                         compact
                       />
 
