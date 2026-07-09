@@ -162,7 +162,8 @@ h1 {
 }
 
 .preview-media {
-  min-height: 220px;
+  --sprite-width: 180px;
+  min-height: 244px;
   display: grid;
   place-items: center;
   padding: 0.5rem;
@@ -186,25 +187,27 @@ h1 {
 
 .preview-chibi-stack {
   position: relative;
-  width: 180px;
-  height: 180px;
+  width: var(--sprite-width);
+  height: var(--sprite-width);
   display: grid;
   place-items: center;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .preview-chibi-image {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--sprite-width);
+  height: auto;
+  object-fit: initial;
 }
 
 .preview-aura-layer {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 180px;
-  height: 180px;
+  left: 0;
+  width: var(--sprite-width);
+  height: calc(var(--sprite-width) * 19 / 20);
   background-repeat: no-repeat;
   background-size: 800% 100%;
   background-position: 0 0;
@@ -215,15 +218,18 @@ h1 {
 }
 
 .preview-aura-back {
-  transform: translate(-50%, -71%);
+  top: calc(var(--sprite-width) * -0.21);
+  transform: none;
 }
 
 .preview-aura-front {
-  transform: translate(-50%, -36%);
+  top: calc(var(--sprite-width) * 0.14);
+  transform: none;
 }
 
 .preview-icon-image {
-  height: 180px;
+  width: var(--sprite-width);
+  height: auto;
 }
 
 @keyframes aura-frames {
