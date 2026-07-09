@@ -177,43 +177,21 @@ function extractObjectLiteral(source: string, marker: string) {
     throw new Error(`Marker not found in source: ${marker}`)
   }
 
-  const openingBrace = source.indexOf('{', markerIndex)
+  const afterMarker = source.slice(markerIndex)
+  const openingBrace = afterMarker.indexOf('{')
   if (openingBrace < 0) {
     throw new Error(`Object start not found for marker: ${marker}`)
   }
 
-  let depth = 0
-  let inString = false
-  let quoteChar = ''
+  const fromBrace = afterMarker.slice(openingBrace)
+  const terminator = fromBrace.match(/\n\s*};/)
 
-  for (let i = openingBrace; i < source.length; i += 1) {
-    const char = source[i]
-    const previous = i > 0 ? source[i - 1] : ''
-
-    if (inString) {
-      if (char === quoteChar && previous !== '\\') {
-        inString = false
-        quoteChar = ''
-      }
-      continue
-    }
-
-    if (char === '"' || char === "'") {
-      inString = true
-      quoteChar = char
-      continue
-    }
-
-    if (char === '{') depth += 1
-    if (char === '}') {
-      depth -= 1
-      if (depth === 0) {
-        return source.slice(openingBrace, i + 1)
-      }
-    }
+  if (!terminator || terminator.index == null) {
+    throw new Error(`Object end not found for marker: ${marker}`)
   }
 
-  throw new Error(`Object end not found for marker: ${marker}`)
+  const endIndex = terminator.index + terminator[0].length
+  return fromBrace.slice(0, endIndex)
 }
 
 function readCachedCatalog(): SunflowerCatalog | null {
