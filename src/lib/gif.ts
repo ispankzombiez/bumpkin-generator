@@ -144,7 +144,7 @@ export async function convertAnimatedWebpToGif(
     const imageData = context.getImageData(0, 0, width, height)
     const palette = quantize(imageData.data, 256, {
       format: 'rgba4444',
-      oneBitAlpha: true,
+      oneBitAlpha: 1,
       clearAlpha: false,
     })
     const indexedFrame = applyPalette(imageData.data, palette, 'rgba4444')

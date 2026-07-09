@@ -27,6 +27,9 @@ const AURA_FRAME_WIDTH = 20
 const AURA_FRAME_HEIGHT = 19
 const AURA_FRAME_COUNT = 8
 const AURA_FPS = 10
+const GIF_SCALE_MIN = 1
+const GIF_SCALE_MAX = 6
+const GIF_SCALE_DEFAULT = GIF_SCALE_MAX
 
 const DEFAULT_LOADOUT: SelectedLoadout = {
   background: 'Deep Sea Salt Cave Background',
@@ -248,7 +251,7 @@ function App() {
   const [chibiDownloadOpen, setChibiDownloadOpen] = useState(false)
   const [convertingGif, setConvertingGif] = useState(false)
   const [gifError, setGifError] = useState('')
-  const [gifScale, setGifScale] = useState(1)
+  const [gifScale, setGifScale] = useState(GIF_SCALE_DEFAULT)
 
   useEffect(() => {
     void loadCatalog()
@@ -654,7 +657,7 @@ function App() {
                 disabled={!tokenUri}
                 onClick={() => {
                   setGifError('')
-                  setGifScale(2)
+                  setGifScale(GIF_SCALE_DEFAULT)
                   setChibiDownloadOpen(true)
                 }}
               >
@@ -881,8 +884,8 @@ function App() {
               <input
                 id="gif-scale-slider"
                 type="range"
-                min={1}
-                max={6}
+                min={GIF_SCALE_MIN}
+                max={GIF_SCALE_MAX}
                 step={1}
                 value={gifScale}
                 onChange={(event) => setGifScale(Number(event.target.value))}
