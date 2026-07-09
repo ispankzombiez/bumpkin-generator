@@ -14,27 +14,8 @@ type AnimatedFrameOptions = {
 
 type NodeWebpMuxModule = {
   Image?: {
-    initLib(): Promise<void>
     getEmptyImage(ext?: boolean): Promise<{
-      load(source: Uint8Array): Promise<void>
       convertToAnim(): void
-      setImageData(
-        buffer: Uint8Array,
-        options: {
-          width: number
-          height: number
-          quality: number
-          exact: boolean
-          lossless: number
-          method: number
-          advanced: {
-            alphaQuality: number
-            alphaFiltering: number
-            useSharpYUV: number
-            nearLossless: number
-          }
-        },
-      ): Promise<number>
       save(
         path: null,
         options: {
@@ -52,6 +33,21 @@ type NodeWebpMuxModule = {
           bgColor: [number, number, number, number]
         },
       ): Promise<Uint8Array>
+    }>
+    generateFrame(options: {
+      buffer: Uint8Array
+      delay: number
+      x: number
+      y: number
+      blend: boolean
+      dispose: boolean
+    }): Promise<{
+      img: unknown
+      delay: number
+      x: number
+      y: number
+      blend: boolean
+      dispose: boolean
     }>
   }
   default?: NodeWebpMuxModule
@@ -85,6 +81,24 @@ function getAuraFrameIndex(elapsedMs: number, fps: number, frameCount: number) {
   return Math.floor((elapsedMs / 1000) * fps) % Math.max(1, frameCount)
 }
 
+function canvasToWebpBuffer(canvas: HTMLCanvasElement) {
+  return new Promise<Uint8Array>((resolve, reject) => {
+    canvas.toBlob(
+      async (blob) => {
+        if (!blob) {
+          reject(new Error('Could not encode WebP frame'))
+          return
+        }
+
+        const frameBuffer = await blob.arrayBuffer()
+        resolve(BufferPolyfill.from(frameBuffer))
+      },
+      'image/webp',
+      1,
+    )
+  })
+}
+
 export async function convertAnimatedWebpToCompositedWebp(
   webpBlob: Blob,
   options: AnimatedFrameOptions = {},
@@ -99,8 +113,6 @@ export async function convertAnimatedWebpToCompositedWebp(
   if (!WebP.Image) {
     throw new Error('WebP encoder is not available')
   }
-
-  await WebP.Image.initLib()
 
   const data = await webpBlob.arrayBuffer()
   const decoder = new ImageDecoderCtor({
@@ -198,40 +210,19 @@ export async function convertAnimatedWebpToCompositedWebp(
       drawAuraLayer(auraFrontImage, auraFrontTopRatio, elapsedMs)
     }
 
-    const imageData = context.getImageData(0, 0, width, height)
-    const rgbaData = new Uint8Array(imageData.data)
-    const still = await WebP.Image.getEmptyImage(true)
-    const encodeResult = await still.setImageData(rgbaData, {
-      width,
-      height,
-      quality: 100,
-      exact: true,
-      lossless: 9,
-      method: 6,
-      advanced: {
-        alphaQuality: 100,
-        alphaFiltering: 2,
-        useSharpYUV: 1,
-        nearLossless: 100,
-      },
-    })
-
-    if (encodeResult !== 0) {
-      frame.close()
-      throw new Error('WebP encoding failed')
-    }
-
     const frameDurationUs = typeof frame.duration === 'number' ? frame.duration : 100000
     const delayMs = Math.max(20, Math.round(frameDurationUs / 1000))
-
-    frames.push({
-      img: still,
+    const frameBuffer = await canvasToWebpBuffer(canvas)
+    const webpFrame = await WebP.Image.generateFrame({
+      buffer: frameBuffer,
       delay: delayMs,
       x: 0,
       y: 0,
       blend: true,
       dispose: false,
     })
+
+    frames.push(webpFrame)
 
     elapsedMs += delayMs
     frame.close()
