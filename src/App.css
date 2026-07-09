@@ -24,6 +24,56 @@ h1 {
   color: var(--muted);
 }
 
+.title-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.title-link:hover {
+  text-decoration: underline;
+}
+
+.title-mini-bumpkin {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: 0.45rem;
+}
+
+.title-mini-stack {
+  --title-mini-width: 18px;
+  --title-mini-height: calc(var(--title-mini-width) * 19 / 20);
+  position: relative;
+  width: var(--title-mini-width);
+  height: var(--title-mini-height);
+  overflow: visible;
+}
+
+.title-mini-image {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--title-mini-width);
+  height: var(--title-mini-height);
+  image-rendering: pixelated;
+  display: block;
+}
+
+.title-mini-aura {
+  position: absolute;
+  left: 0;
+  width: var(--title-mini-width);
+  height: var(--title-mini-height);
+  image-rendering: pixelated;
+}
+
+.title-mini-aura-back {
+  top: calc(var(--title-mini-width) * -0.21);
+}
+
+.title-mini-aura-front {
+  top: calc(var(--title-mini-width) * 0.14);
+}
+
 .subtitle {
   margin-top: 0.65rem;
   max-width: 58ch;

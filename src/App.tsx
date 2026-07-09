@@ -182,6 +182,7 @@ function App() {
   }, [catalog, selected.aura])
   const auraUrls = useMemo(() => buildAuraUrls(auraId), [auraId])
   const iconLoadError = !!animations.iconUrl && failedIconFor === animations.iconUrl
+  const showHeaderMiniBumpkin = !!animations.chibiUrl
 
   const activeSlotItems = useMemo(() => {
     if (!activeSlot) return []
@@ -269,7 +270,41 @@ function App() {
       <header className="topbar">
         <div>
           <h1>
-            Bumpkin Generator <span className="title-tag">by iSPANK</span>
+            Bumpkin Generator{' '}
+            <span className="title-tag">
+              by{' '}
+              <a
+                href="https://sunflower-land.com/play/#/visit/1128976301583508"
+                target="_blank"
+                rel="noreferrer"
+                className="title-link"
+              >
+                iSPANK
+              </a>
+              {showHeaderMiniBumpkin && (
+                <span className="title-mini-bumpkin" aria-hidden="true">
+                  <span className="title-mini-stack">
+                    {!!auraUrls.backUrl && (
+                      <AuraSprite
+                        src={auraUrls.backUrl}
+                        className="title-mini-aura title-mini-aura-back"
+                      />
+                    )}
+                    <img
+                      src={animations.chibiUrl}
+                      alt=""
+                      className="title-mini-image"
+                    />
+                    {!!auraUrls.frontUrl && (
+                      <AuraSprite
+                        src={auraUrls.frontUrl}
+                        className="title-mini-aura title-mini-aura-front"
+                      />
+                    )}
+                  </span>
+                </span>
+              )}
+            </span>
           </h1>
           <p className="subtitle">
             Live catalog from Sunflower Land source, instant chibi + icon preview,
