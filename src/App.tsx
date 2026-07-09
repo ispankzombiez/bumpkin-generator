@@ -9,6 +9,7 @@ import {
 import {
   buildSearchFromLoadout,
   buildAnimationUrls,
+  buildAuraUrls,
   buildTokenUriFromSelection,
   parseLoadoutFromSearch,
   SLOT_LABELS,
@@ -97,6 +98,14 @@ function App() {
   }, [catalog, selected])
 
   const animations = useMemo(() => buildAnimationUrls(tokenUri), [tokenUri])
+  const auraId = useMemo(() => {
+    if (!catalog) return 0
+    const auraName = selected.aura
+    if (!auraName) return 0
+
+    return catalog.itemIds[auraName] ?? 0
+  }, [catalog, selected.aura])
+  const auraUrls = useMemo(() => buildAuraUrls(auraId), [auraId])
   const iconLoadError = !!animations.iconUrl && failedIconFor === animations.iconUrl
 
   const activeSlotItems = useMemo(() => {
@@ -279,11 +288,25 @@ function App() {
               <h3>Chibi</h3>
               <div className="preview-media">
                 {tokenUri ? (
-                  <img
-                    src={animations.chibiUrl}
-                    alt="Bumpkin chibi preview"
-                    className="preview-image"
-                  />
+                  <div className="preview-chibi-stack">
+                    {!!auraUrls.backUrl && (
+                      <div
+                        className="preview-aura-layer preview-aura-back"
+                        style={{ backgroundImage: `url(${auraUrls.backUrl})` }}
+                      />
+                    )}
+                    <img
+                      src={animations.chibiUrl}
+                      alt="Bumpkin chibi preview"
+                      className="preview-image preview-chibi-image"
+                    />
+                    {!!auraUrls.frontUrl && (
+                      <div
+                        className="preview-aura-layer preview-aura-front"
+                        style={{ backgroundImage: `url(${auraUrls.frontUrl})` }}
+                      />
+                    )}
+                  </div>
                 ) : (
                   <p className="placeholder">Equip at least one item to preview.</p>
                 )}

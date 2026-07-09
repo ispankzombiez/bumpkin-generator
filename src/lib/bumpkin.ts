@@ -48,6 +48,7 @@ export const SLOT_LABELS: Record<BumpkinSlot, string> = {
 
 const ANIMATION_BASE_URL = 'https://animations.sunflower-land.com/animated_webp'
 const PROFILE_ICON_BASE_URL = 'https://animations.sunflower-land.com/bumpkin_image'
+const AURA_BASE_URL = 'https://sunflower-land.com/game-assets/aura'
 
 export function buildTokenUriFromSelection(
   selected: SelectedLoadout,
@@ -83,6 +84,17 @@ export function buildAnimationUrls(tokenUri: string) {
   return {
     chibiUrl: `${base}/idle-small`,
     iconUrl: `${PROFILE_ICON_BASE_URL}/0_v1_${tokenUri}/100`,
+  }
+}
+
+export function buildAuraUrls(auraId?: number) {
+  if (!auraId) {
+    return { frontUrl: '', backUrl: '' }
+  }
+
+  return {
+    frontUrl: `${AURA_BASE_URL}/front/${auraId}.png`,
+    backUrl: `${AURA_BASE_URL}/back/${auraId}.png`,
   }
 }
 
