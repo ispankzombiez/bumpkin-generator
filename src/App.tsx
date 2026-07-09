@@ -298,7 +298,7 @@ function App() {
                     <img
                       src={animations.chibiUrl}
                       alt="Bumpkin chibi preview"
-                      className="preview-image preview-chibi-image"
+                      className="preview-chibi-image"
                     />
                     {!!auraUrls.frontUrl && (
                       <div

@@ -163,6 +163,7 @@ h1 {
 
 .preview-media {
   --sprite-width: 180px;
+  --aura-frame-height: calc(var(--sprite-width) * 19 / 20);
   min-height: 244px;
   display: grid;
   place-items: center;
@@ -176,7 +177,7 @@ h1 {
 }
 
 .preview-image {
-  height: 180px;
+  height: var(--sprite-width);
   width: auto;
   max-width: 100%;
   image-rendering: pixelated;
@@ -189,8 +190,6 @@ h1 {
   position: relative;
   width: var(--sprite-width);
   height: var(--sprite-width);
-  display: grid;
-  place-items: center;
   overflow: visible;
 }
 
@@ -199,15 +198,15 @@ h1 {
   left: 0;
   top: 0;
   width: var(--sprite-width);
-  height: calc(var(--sprite-width) * 19 / 20);
-  object-fit: initial;
+  height: auto;
+  image-rendering: pixelated;
 }
 
 .preview-aura-layer {
   position: absolute;
   left: 0;
   width: var(--sprite-width);
-  height: calc(var(--sprite-width) * 19 / 20);
+  height: var(--aura-frame-height);
   background-repeat: no-repeat;
   background-size: 800% 100%;
   background-position: 0 0;
@@ -229,7 +228,7 @@ h1 {
 
 .preview-icon-image {
   width: auto;
-  height: calc(var(--sprite-width) * 19 / 20);
+  height: var(--sprite-width);
 }
 
 @keyframes aura-frames {
