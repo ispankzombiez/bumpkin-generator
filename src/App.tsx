@@ -82,6 +82,10 @@ function App() {
     })
   }
 
+  function clearAllSlots() {
+    setSelected({})
+  }
+
   const tokenUri = useMemo(() => {
     if (!catalog) return ''
     return buildTokenUriFromSelection(selected, catalog.itemIds)
@@ -179,7 +183,17 @@ function App() {
       <section className="workspace-grid">
         <div className="panel loadout-panel">
           <div className="panel-header">
-            <h2>Equip</h2>
+            <div className="panel-title-row">
+              <h2>Equip</h2>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={clearAllSlots}
+                disabled={Object.keys(selected).length === 0}
+              >
+                Clear All
+              </button>
+            </div>
             {catalog && (
               <p className="meta-line">
                 {Object.keys(catalog.itemIds).length} items from live source
@@ -194,25 +208,28 @@ function App() {
               return (
                 <div key={slot} className="slot-field">
                   <span>{SLOT_LABELS[slot]}</span>
-                  <button
-                    type="button"
-                    className="slot-picker-button"
-                    disabled={loading || !hasItems}
-                    onClick={() => {
-                      setSlotQuery('')
-                      setActiveSlot(slot)
-                    }}
-                  >
-                    {selected[slot] ?? `Select ${SLOT_LABELS[slot]}`}
-                  </button>
-                  <button
-                    type="button"
-                    className="slot-clear-button"
-                    disabled={!selected[slot]}
-                    onClick={() => onSlotChange(slot, '')}
-                  >
-                    Clear
-                  </button>
+                  <div className="slot-picker-row">
+                    <button
+                      type="button"
+                      className="slot-picker-button"
+                      disabled={loading || !hasItems}
+                      onClick={() => {
+                        setSlotQuery('')
+                        setActiveSlot(slot)
+                      }}
+                    >
+                      {selected[slot] ?? `Select ${SLOT_LABELS[slot]}`}
+                    </button>
+                    <button
+                      type="button"
+                      className="slot-clear-button"
+                      disabled={!selected[slot]}
+                      onClick={() => onSlotChange(slot, '')}
+                      aria-label={`Clear ${SLOT_LABELS[slot]}`}
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
               )
             })}
@@ -222,7 +239,6 @@ function App() {
         <div className="panel preview-panel">
           <div className="panel-header">
             <h2>Preview</h2>
-            <p className="meta-line">Token URI: {tokenUri || 'N/A'}</p>
           </div>
 
           <div className="preview-grid">
@@ -254,7 +270,7 @@ function App() {
                   key={animations.iconUrl}
                   src={animations.iconUrl}
                   alt="Bumpkin player icon preview"
-                  className="preview-image player-icon"
+                  className="preview-image"
                   onError={() => setFailedIconFor(animations.iconUrl)}
                 />
               ) : (
