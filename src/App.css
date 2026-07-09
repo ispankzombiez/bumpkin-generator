@@ -190,7 +190,7 @@ h1 {
   position: relative;
   width: var(--sprite-width);
   height: var(--sprite-width);
-  overflow: visible;
+  overflow: hidden;
 }
 
 .preview-chibi-image {
@@ -198,7 +198,7 @@ h1 {
   left: 0;
   top: 0;
   width: var(--sprite-width);
-  height: auto;
+  height: var(--aura-frame-height);
   image-rendering: pixelated;
 }
 
@@ -208,11 +208,11 @@ h1 {
   width: var(--sprite-width);
   height: var(--aura-frame-height);
   background-repeat: no-repeat;
-  background-size: 800% 100%;
+  background-size: calc(var(--sprite-width) * 8) var(--aura-frame-height);
   background-position: 0 0;
   image-rendering: pixelated;
   pointer-events: none;
-  animation: aura-frames 0.57s steps(8) infinite;
+  animation: aura-frames 0.8s steps(8, end) infinite;
   transform-origin: center;
 }
 
@@ -237,7 +237,7 @@ h1 {
   }
 
   to {
-    background-position: 100% 0;
+    background-position: calc(var(--sprite-width) * -7) 0;
   }
 }
 
