@@ -41,6 +41,7 @@ function App() {
   const [chibiDownloadOpen, setChibiDownloadOpen] = useState(false)
   const [convertingGif, setConvertingGif] = useState(false)
   const [gifError, setGifError] = useState('')
+  const [gifScale, setGifScale] = useState(1)
 
   useEffect(() => {
     void loadCatalog()
@@ -166,7 +167,7 @@ function App() {
       if (!response.ok) throw new Error('Could not fetch chibi animation')
 
       const webpBlob = await response.blob()
-      const gifBlob = await convertAnimatedWebpToGif(webpBlob)
+      const gifBlob = await convertAnimatedWebpToGif(webpBlob, { scale: gifScale })
 
       downloadBlob(gifBlob, 'bumpkin-chibi.gif')
       setChibiDownloadOpen(false)
@@ -293,6 +294,7 @@ function App() {
                 disabled={!tokenUri}
                 onClick={() => {
                   setGifError('')
+                  setGifScale(1)
                   setChibiDownloadOpen(true)
                 }}
               >
@@ -469,6 +471,35 @@ function App() {
               >
                 {convertingGif ? 'Converting...' : 'GIF (Converted)'}
               </button>
+            </div>
+
+            <div className="gif-controls">
+              <label htmlFor="gif-scale-slider">
+                GIF Size: {gifScale}x
+              </label>
+              <input
+                id="gif-scale-slider"
+                type="range"
+                min={1}
+                max={6}
+                step={1}
+                value={gifScale}
+                onChange={(event) => setGifScale(Number(event.target.value))}
+                disabled={convertingGif}
+              />
+            </div>
+
+            <div className="gif-preview-wrap">
+              <p className="meta-line">GIF Preview</p>
+              <img
+                src={animations.chibiUrl}
+                alt="GIF preview"
+                className="gif-live-preview"
+                style={{
+                  width: `${70 * gifScale}px`,
+                  height: `${70 * gifScale}px`,
+                }}
+              />
             </div>
 
             {!!gifError && <p className="error-banner">{gifError}</p>}

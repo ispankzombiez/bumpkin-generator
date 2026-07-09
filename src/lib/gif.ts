@@ -1,6 +1,24 @@
 import { GIFEncoder, applyPalette, quantize } from 'gifenc'
 
-export async function convertAnimatedWebpToGif(webpBlob: Blob) {
+export type GifConversionOptions = {
+  scale?: number
+}
+
+function findTransparentIndex(palette: number[][]) {
+  for (let i = 0; i < palette.length; i += 1) {
+    const color = palette[i]
+    if (color.length >= 4 && color[3] === 0) {
+      return i
+    }
+  }
+
+  return -1
+}
+
+export async function convertAnimatedWebpToGif(
+  webpBlob: Blob,
+  options: GifConversionOptions = {},
+) {
   const ImageDecoderCtor = window.ImageDecoder
 
   if (!ImageDecoderCtor) {
@@ -20,8 +38,11 @@ export async function convertAnimatedWebpToGif(webpBlob: Blob) {
 
   const firstDecoded = await decoder.decode({ frameIndex: 0 })
   const firstFrame = firstDecoded.image
-  const width = firstFrame.displayWidth || firstFrame.codedWidth || 0
-  const height = firstFrame.displayHeight || firstFrame.codedHeight || 0
+  const sourceWidth = firstFrame.displayWidth || firstFrame.codedWidth || 0
+  const sourceHeight = firstFrame.displayHeight || firstFrame.codedHeight || 0
+  const scale = Math.max(1, Math.floor(options.scale ?? 1))
+  const width = sourceWidth * scale
+  const height = sourceHeight * scale
 
   if (!width || !height) {
     firstFrame.close()
@@ -48,8 +69,13 @@ export async function convertAnimatedWebpToGif(webpBlob: Blob) {
     context.drawImage(frame, 0, 0, width, height)
 
     const imageData = context.getImageData(0, 0, width, height)
-    const palette = quantize(imageData.data, 256)
-    const indexedFrame = applyPalette(imageData.data, palette)
+    const palette = quantize(imageData.data, 256, {
+      format: 'rgba4444',
+      oneBitAlpha: true,
+      clearAlpha: false,
+    })
+    const indexedFrame = applyPalette(imageData.data, palette, 'rgba4444')
+    const transparentIndex = findTransparentIndex(palette)
 
     const frameDurationUs = typeof frame.duration === 'number' ? frame.duration : 100000
     const delayMs = Math.max(20, Math.round(frameDurationUs / 1000))
@@ -58,6 +84,8 @@ export async function convertAnimatedWebpToGif(webpBlob: Blob) {
       palette,
       delay: delayMs,
       repeat: 0,
+      transparent: transparentIndex >= 0,
+      transparentIndex: transparentIndex >= 0 ? transparentIndex : 0,
     })
 
     frame.close()

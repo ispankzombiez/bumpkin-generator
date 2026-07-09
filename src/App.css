@@ -236,6 +236,36 @@ h1 {
   gap: 0.6rem;
 }
 
+.gif-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.gif-controls label {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.gif-controls input[type='range'] {
+  width: 100%;
+}
+
+.gif-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  align-items: flex-start;
+}
+
+.gif-live-preview {
+  image-rendering: pixelated;
+  border: 1px solid var(--border);
+  border-radius: 0.6rem;
+  background: transparent;
+  object-fit: contain;
+}
+
 .placeholder {
   color: var(--muted);
   font-size: 0.9rem;
