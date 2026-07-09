@@ -15,7 +15,17 @@ import {
   type SelectedLoadout,
 } from './lib/bumpkin'
 
+type ThemeMode = 'light' | 'dark'
+
 function App() {
+  const [theme, setTheme] = useState<ThemeMode>(() => {
+    const stored = window.localStorage.getItem('bumpkin-generator.theme')
+    if (stored === 'dark' || stored === 'light') return stored
+
+    return window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light'
+  })
   const [catalog, setCatalog] = useState<SunflowerCatalog | null>(null)
   const [selected, setSelected] = useState<SelectedLoadout>(() =>
     parseLoadoutFromSearch(window.location.search),
@@ -29,6 +39,11 @@ function App() {
   useEffect(() => {
     void loadCatalog()
   }, [])
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    window.localStorage.setItem('bumpkin-generator.theme', theme)
+  }, [theme])
 
   useEffect(() => {
     const search = buildSearchFromLoadout(selected)
@@ -123,8 +138,9 @@ function App() {
     <main className="app-shell">
       <header className="topbar">
         <div>
-          <p className="eyebrow">Sunflower Land Wearable Studio</p>
-          <h1>Bumpkin Generator</h1>
+          <h1>
+            Bumpkin Generator <span className="title-tag">by iSPANK</span>
+          </h1>
           <p className="subtitle">
             Live catalog from Sunflower Land source, instant chibi + icon preview,
             and one-click downloads.
@@ -138,6 +154,13 @@ function App() {
             disabled={loading}
           >
             {loading ? 'Syncing...' : 'Refresh Catalog'}
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => setTheme((previous) => (previous === 'dark' ? 'light' : 'dark'))}
+          >
+            {theme === 'dark' ? 'Switch to Light' : 'Switch to Dark'}
           </button>
         </div>
       </header>
@@ -224,9 +247,17 @@ function App() {
               <h3>Player Icon (idle)</h3>
               {tokenUri ? (
                 <img
+                  key={animations.iconUrl}
                   src={animations.iconUrl}
                   alt="Bumpkin player icon preview"
-                  className="preview-image"
+                  className="preview-image player-icon"
+                  onError={(event) => {
+                    const target = event.currentTarget
+                    if (target.dataset.fallbackUsed === '1') return
+
+                    target.dataset.fallbackUsed = '1'
+                    target.src = animations.iconFallbackUrl
+                  }}
                 />
               ) : (
                 <p className="placeholder">Equip at least one item to preview.</p>

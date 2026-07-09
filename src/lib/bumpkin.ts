@@ -74,7 +74,7 @@ export function buildTokenUriFromSelection(
 
 export function buildAnimationUrls(tokenUri: string) {
   if (!tokenUri) {
-    return { chibiUrl: '', iconUrl: '' }
+    return { chibiUrl: '', iconUrl: '', iconFallbackUrl: '' }
   }
 
   const base = `${ANIMATION_BASE_URL}/0_v1_${tokenUri}`
@@ -82,6 +82,7 @@ export function buildAnimationUrls(tokenUri: string) {
   return {
     chibiUrl: `${base}/idle-small`,
     iconUrl: `${base}/idle`,
+    iconFallbackUrl: `${base}/idle-small`,
   }
 }
 
