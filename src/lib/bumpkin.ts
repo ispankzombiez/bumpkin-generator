@@ -126,3 +126,24 @@ export function buildSearchFromLoadout(selected: SelectedLoadout): string {
 
   return params.toString()
 }
+
+export function formatLoadoutForClipboard(
+  selected: SelectedLoadout,
+  title?: string,
+) {
+  const lines: string[] = []
+
+  if (title) {
+    lines.push(title)
+    lines.push('')
+  }
+
+  for (const slot of Object.keys(SLOT_LABELS) as BumpkinSlot[]) {
+    const item = selected[slot]
+    if (!item) continue
+
+    lines.push(`${SLOT_LABELS[slot]}: ${item}`)
+  }
+
+  return lines.join('\n')
+}

@@ -52,10 +52,19 @@ export type SunflowerCatalog = {
   itemsBySlot: Record<BumpkinSlot, string[]>
 }
 
+export type SunflowerNpcPreset = {
+  name: string
+  equipped: Partial<Record<BumpkinSlot, string>>
+}
+
 const SOURCE_URL =
   'https://raw.githubusercontent.com/sunflower-land/sunflower-land/main/src/features/game/types/bumpkin.ts'
 
+const NPC_SOURCE_URL =
+  'https://raw.githubusercontent.com/sunflower-land/sunflower-land/main/src/lib/npcs.ts'
+
 const CACHE_KEY = 'bumpkin-generator.catalog.v1'
+const NPC_CACHE_KEY = 'bumpkin-generator.npcs.v1'
 
 export async function fetchSunflowerCatalog(
   forceRefresh = false,
@@ -101,6 +110,37 @@ export async function fetchSunflowerCatalog(
     throw error instanceof Error
       ? error
       : new Error('Failed to load Sunflower Land wearables source.')
+  }
+}
+
+export async function fetchSunflowerNpcPresets(
+  forceRefresh = false,
+): Promise<SunflowerNpcPreset[]> {
+  if (!forceRefresh) {
+    const cached = readCachedNpcPresets()
+    if (cached) return cached
+  }
+
+  try {
+    const response = await fetch(NPC_SOURCE_URL, { cache: 'no-store' })
+
+    if (!response.ok) {
+      throw new Error(`NPC source request failed with status ${response.status}`)
+    }
+
+    const source = await response.text()
+    const npcLiteral = extractObjectLiteral(source, 'export const NPC_WEARABLES')
+    const presets = parseNpcPresets(npcLiteral)
+
+    writeCachedNpcPresets(presets)
+    return presets
+  } catch (error) {
+    const fallback = readCachedNpcPresets()
+    if (fallback) return fallback
+
+    throw error instanceof Error
+      ? error
+      : new Error('Failed to load Sunflower Land NPC presets.')
   }
 }
 
@@ -212,6 +252,117 @@ function writeCachedCatalog(catalog: SunflowerCatalog) {
 
   try {
     window.localStorage.setItem(CACHE_KEY, JSON.stringify(catalog))
+  } catch {
+    // Ignore localStorage write failures.
+  }
+}
+
+function parseNpcPresets(objectLiteral: string): SunflowerNpcPreset[] {
+  const body = stripComments(objectLiteral.slice(1, -1))
+  const presets: SunflowerNpcPreset[] = []
+
+  let index = 0
+  while (index < body.length) {
+    while (index < body.length && /[\s,]/.test(body[index]!)) index++
+    if (index >= body.length) break
+
+    const key = readObjectKey(body, index)
+    index = key.nextIndex
+
+    while (index < body.length && /\s/.test(body[index]!)) index++
+    if (body[index] !== ':') {
+      throw new Error(`Invalid NPC object entry for ${key.value}`)
+    }
+
+    index++
+    while (index < body.length && /\s/.test(body[index]!)) index++
+    if (body[index] !== '{') {
+      throw new Error(`Missing NPC wearables object for ${key.value}`)
+    }
+
+    const endIndex = findMatchingBrace(body, index)
+    const nestedLiteral = body.slice(index, endIndex + 1)
+    const equipped = parseFlatObject(nestedLiteral, 'string') as Partial<Record<
+      BumpkinSlot,
+      string
+    >>
+
+    presets.push({ name: key.value, equipped })
+    index = endIndex + 1
+  }
+
+  return presets
+}
+
+function readObjectKey(source: string, startIndex: number) {
+  let index = startIndex
+
+  if (source[index] === '"' || source[index] === "'") {
+    const quote = source[index]!
+    index++
+    const keyStart = index
+
+    while (index < source.length && source[index] !== quote) index++
+    if (index >= source.length) {
+      throw new Error('Unterminated NPC key string')
+    }
+
+    return {
+      value: source.slice(keyStart, index),
+      nextIndex: index + 1,
+    }
+  }
+
+  const keyStart = index
+  while (index < source.length && source[index] !== ':') index++
+  if (index >= source.length) {
+    throw new Error('Unterminated NPC key token')
+  }
+
+  return {
+    value: source.slice(keyStart, index).trim(),
+    nextIndex: index,
+  }
+}
+
+function findMatchingBrace(source: string, openIndex: number) {
+  let depth = 0
+  for (let index = openIndex; index < source.length; index++) {
+    const character = source[index]
+    if (character === '{') depth++
+    if (character === '}') {
+      depth--
+      if (depth === 0) return index
+    }
+  }
+
+  throw new Error('Unterminated NPC object literal')
+}
+
+function stripComments(source: string) {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/(^|[^:])\/\/.*$/gm, '$1')
+}
+
+function readCachedNpcPresets(): SunflowerNpcPreset[] | null {
+  if (typeof window === 'undefined') return null
+
+  try {
+    const raw = window.localStorage.getItem(NPC_CACHE_KEY)
+    if (!raw) return null
+
+    return JSON.parse(raw) as SunflowerNpcPreset[]
+  } catch {
+    return null
+  }
+}
+
+function writeCachedNpcPresets(presets: SunflowerNpcPreset[]) {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.localStorage.setItem(NPC_CACHE_KEY, JSON.stringify(presets))
   } catch {
     // Ignore localStorage write failures.
   }

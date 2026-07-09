@@ -3,14 +3,17 @@ import './App.css'
 import {
   SLOT_ORDER,
   fetchSunflowerCatalog,
+  fetchSunflowerNpcPresets,
   type BumpkinSlot,
   type SunflowerCatalog,
+  type SunflowerNpcPreset,
 } from './lib/sunflower'
 import {
   buildSearchFromLoadout,
   buildAnimationUrls,
   buildAuraUrls,
   buildTokenUriFromSelection,
+  formatLoadoutForClipboard,
   parseLoadoutFromSearch,
   SLOT_LABELS,
   type SelectedLoadout,
@@ -18,6 +21,7 @@ import {
 import { convertAnimatedWebpToGif } from './lib/gif'
 
 type ThemeMode = 'light' | 'dark'
+type AppTab = 'main' | 'npcs'
 
 const AURA_FRAME_WIDTH = 20
 const AURA_FRAME_HEIGHT = 19
@@ -113,6 +117,100 @@ function AuraSprite({ src, className }: { src: string; className: string }) {
   )
 }
 
+type PreviewPairProps = {
+  loadout: SelectedLoadout
+  catalog: SunflowerCatalog | null
+  sizePx?: number
+  compact?: boolean
+  chibiTitle?: string
+  iconTitle?: string
+  iconErrorUrl?: string
+  onIconError?: (url: string) => void
+}
+
+function PreviewPair({
+  loadout,
+  catalog,
+  sizePx = 180,
+  compact = false,
+  chibiTitle = 'Chibi',
+  iconTitle = 'Player Icon',
+  iconErrorUrl,
+  onIconError,
+}: PreviewPairProps) {
+  const tokenUri = useMemo(() => {
+    if (!catalog) return ''
+    return buildTokenUriFromSelection(loadout, catalog.itemIds)
+  }, [catalog, loadout])
+
+  const animations = useMemo(() => buildAnimationUrls(tokenUri), [tokenUri])
+  const auraId = useMemo(() => {
+    if (!catalog) return 0
+    const auraName = loadout.aura
+    if (!auraName) return 0
+
+    return catalog.itemIds[auraName] ?? 0
+  }, [catalog, loadout.aura])
+  const auraUrls = useMemo(() => buildAuraUrls(auraId), [auraId])
+  const iconLoadError = !!animations.iconUrl && iconErrorUrl === animations.iconUrl
+
+  return (
+    <div
+      className={`preview-grid ${compact ? 'preview-grid-compact' : ''}`}
+      style={{ ['--sprite-width' as string]: `${sizePx}px` }}
+    >
+      <article className={`preview-card ${compact ? 'preview-card-compact' : ''}`}>
+        <h3>{chibiTitle}</h3>
+        <div className="preview-media">
+          {tokenUri ? (
+            <div className="preview-chibi-stack">
+              {!!auraUrls.backUrl && (
+                <AuraSprite
+                  src={auraUrls.backUrl}
+                  className="preview-aura-layer preview-aura-back"
+                />
+              )}
+              <img
+                src={animations.chibiUrl}
+                alt={`${chibiTitle} preview`}
+                className="preview-chibi-image"
+              />
+              {!!auraUrls.frontUrl && (
+                <AuraSprite
+                  src={auraUrls.frontUrl}
+                  className="preview-aura-layer preview-aura-front"
+                />
+              )}
+            </div>
+          ) : (
+            <p className="placeholder">Equip at least one item to preview.</p>
+          )}
+        </div>
+      </article>
+
+      <article className={`preview-card ${compact ? 'preview-card-compact' : ''}`}>
+        <h3>{iconTitle}</h3>
+        <div className="preview-media">
+          {tokenUri && !iconLoadError ? (
+            <img
+              src={animations.iconUrl}
+              alt={`${iconTitle} preview`}
+              className="preview-image preview-icon-image"
+              onError={() => onIconError?.(animations.iconUrl)}
+            />
+          ) : (
+            <p className="placeholder">
+              {tokenUri
+                ? 'Player icon endpoint returned no image for this loadout.'
+                : 'Equip at least one item to preview.'}
+            </p>
+          )}
+        </div>
+      </article>
+    </div>
+  )
+}
+
 function App() {
   const [theme, setTheme] = useState<ThemeMode>(() => {
     const stored = window.localStorage.getItem('bumpkin-generator.theme')
@@ -122,11 +220,17 @@ function App() {
       ? 'dark'
       : 'light'
   })
+  const [activeTab, setActiveTab] = useState<AppTab>('main')
   const [catalog, setCatalog] = useState<SunflowerCatalog | null>(null)
   const [selected, setSelected] = useState<SelectedLoadout>(() => getInitialLoadout())
+  const [npcPresets, setNpcPresets] = useState<SunflowerNpcPreset[]>([])
+  const [npcLoading, setNpcLoading] = useState(true)
+  const [npcError, setNpcError] = useState('')
+  const [npcQuery, setNpcQuery] = useState('')
   const [activeSlot, setActiveSlot] = useState<BumpkinSlot | null>(null)
   const [slotQuery, setSlotQuery] = useState('')
   const [failedIconFor, setFailedIconFor] = useState('')
+  const [copiedNpcName, setCopiedNpcName] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
@@ -138,6 +242,10 @@ function App() {
 
   useEffect(() => {
     void loadCatalog()
+  }, [])
+
+  useEffect(() => {
+    void loadNpcPresets()
   }, [])
 
   useEffect(() => {
@@ -166,6 +274,20 @@ function App() {
     }
   }
 
+  async function loadNpcPresets(forceRefresh = false) {
+    setNpcLoading(true)
+    setNpcError('')
+
+    try {
+      const presets = await fetchSunflowerNpcPresets(forceRefresh)
+      setNpcPresets(presets)
+    } catch (err) {
+      setNpcError(err instanceof Error ? err.message : 'Could not load NPC presets.')
+    } finally {
+      setNpcLoading(false)
+    }
+  }
+
   function onSlotChange(slot: BumpkinSlot, value: string) {
     setSelected((previous) => {
       const next = { ...previous }
@@ -184,6 +306,24 @@ function App() {
     setSelected({})
   }
 
+  function applyLoadout(nextLoadout: SelectedLoadout) {
+    setSelected(nextLoadout)
+    setActiveTab('main')
+    setActiveSlot(null)
+    setSlotQuery('')
+    setFailedIconFor('')
+  }
+
+  async function copyNpcPreset(name: string, equipped: SelectedLoadout) {
+    try {
+      await navigator.clipboard.writeText(formatLoadoutForClipboard(equipped, name))
+      setCopiedNpcName(name)
+      window.setTimeout(() => setCopiedNpcName(''), 1400)
+    } catch {
+      setCopiedNpcName('')
+    }
+  }
+
   const tokenUri = useMemo(() => {
     if (!catalog) return ''
     return buildTokenUriFromSelection(selected, catalog.itemIds)
@@ -198,8 +338,21 @@ function App() {
     return catalog.itemIds[auraName] ?? 0
   }, [catalog, selected.aura])
   const auraUrls = useMemo(() => buildAuraUrls(auraId), [auraId])
-  const iconLoadError = !!animations.iconUrl && failedIconFor === animations.iconUrl
   const showHeaderMiniBumpkin = !!animations.chibiUrl
+
+  const visibleNpcPresets = useMemo(() => {
+    const query = npcQuery.trim().toLowerCase()
+
+    if (!query) return npcPresets
+
+    return npcPresets.filter((preset) => {
+      if (preset.name.toLowerCase().includes(query)) return true
+
+      return Object.values(preset.equipped).some((item) =>
+        item?.toLowerCase().includes(query),
+      )
+    })
+  }, [npcPresets, npcQuery])
 
   const activeSlotItems = useMemo(() => {
     if (!activeSlot) return []
@@ -349,95 +502,113 @@ function App() {
 
       {!!error && <p className="error-banner">{error}</p>}
 
-      <section className="workspace-grid">
-        <div className="panel loadout-panel">
-          <div className="panel-header">
-            <div className="panel-title-row">
-              <h2>Equip</h2>
+      <div className="tab-bar" role="tablist" aria-label="Preview tabs">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'main'}
+          className={`tab-button ${activeTab === 'main' ? 'active' : ''}`}
+          onClick={() => setActiveTab('main')}
+        >
+          Main
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'npcs'}
+          className={`tab-button ${activeTab === 'npcs' ? 'active' : ''}`}
+          onClick={() => setActiveTab('npcs')}
+        >
+          NPC&apos;s
+        </button>
+      </div>
+
+      {activeTab === 'main' ? (
+        <section className="workspace-grid">
+          <div className="panel loadout-panel">
+            <div className="panel-header">
+              <div className="panel-title-row">
+                <h2>Equip</h2>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={clearAllSlots}
+                  disabled={Object.keys(selected).length === 0}
+                >
+                  Clear All
+                </button>
+              </div>
+              {catalog && (
+                <p className="meta-line">
+                  {Object.keys(catalog.itemIds).length} items from live source
+                </p>
+              )}
+            </div>
+
+            <div className="slot-grid">
+              {SLOT_ORDER.map((slot) => {
+                const hasItems = (catalog?.itemsBySlot[slot]?.length ?? 0) > 0
+
+                return (
+                  <div key={slot} className="slot-field">
+                    <span>{SLOT_LABELS[slot]}</span>
+                    <div className="slot-picker-row">
+                      <button
+                        type="button"
+                        className="slot-picker-button"
+                        disabled={loading || !hasItems}
+                        onClick={() => {
+                          setSlotQuery('')
+                          setActiveSlot(slot)
+                        }}
+                      >
+                        {selected[slot] ?? `Select ${SLOT_LABELS[slot]}`}
+                      </button>
+                      <button
+                        type="button"
+                        className="slot-clear-button"
+                        disabled={!selected[slot]}
+                        onClick={() => onSlotChange(slot, '')}
+                        aria-label={`Clear ${SLOT_LABELS[slot]}`}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="panel preview-panel">
+            <div className="panel-header">
+              <h2>Preview</h2>
+            </div>
+
+            <PreviewPair
+              loadout={selected}
+              catalog={catalog}
+              sizePx={180}
+              iconErrorUrl={failedIconFor}
+              onIconError={(url) => setFailedIconFor(url)}
+            />
+
+            <div className="token-actions">
               <button
                 type="button"
                 className="btn btn-ghost"
-                onClick={clearAllSlots}
-                disabled={Object.keys(selected).length === 0}
+                onClick={() => void copyToken()}
+                disabled={!tokenUri}
               >
-                Clear All
+                {copied ? 'Copied' : 'Copy Token URI'}
               </button>
-            </div>
-            {catalog && (
-              <p className="meta-line">
-                {Object.keys(catalog.itemIds).length} items from live source
-              </p>
-            )}
-          </div>
-
-          <div className="slot-grid">
-            {SLOT_ORDER.map((slot) => {
-              const hasItems = (catalog?.itemsBySlot[slot]?.length ?? 0) > 0
-
-              return (
-                <div key={slot} className="slot-field">
-                  <span>{SLOT_LABELS[slot]}</span>
-                  <div className="slot-picker-row">
-                    <button
-                      type="button"
-                      className="slot-picker-button"
-                      disabled={loading || !hasItems}
-                      onClick={() => {
-                        setSlotQuery('')
-                        setActiveSlot(slot)
-                      }}
-                    >
-                      {selected[slot] ?? `Select ${SLOT_LABELS[slot]}`}
-                    </button>
-                    <button
-                      type="button"
-                      className="slot-clear-button"
-                      disabled={!selected[slot]}
-                      onClick={() => onSlotChange(slot, '')}
-                      aria-label={`Clear ${SLOT_LABELS[slot]}`}
-                    >
-                      ×
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="panel preview-panel">
-          <div className="panel-header">
-            <h2>Preview</h2>
-          </div>
-
-          <div className="preview-grid">
-            <article className="preview-card">
-              <h3>Chibi</h3>
-              <div className="preview-media">
-                {tokenUri ? (
-                  <div className="preview-chibi-stack">
-                    {!!auraUrls.backUrl && (
-                      <AuraSprite
-                        src={auraUrls.backUrl}
-                        className="preview-aura-layer preview-aura-back"
-                      />
-                    )}
-                    <img
-                      src={animations.chibiUrl}
-                      alt="Bumpkin chibi preview"
-                      className="preview-chibi-image"
-                    />
-                    {!!auraUrls.frontUrl && (
-                      <AuraSprite
-                        src={auraUrls.frontUrl}
-                        className="preview-aura-layer preview-aura-front"
-                      />
-                    )}
-                  </div>
-                ) : (
-                  <p className="placeholder">Equip at least one item to preview.</p>
-                )}
-              </div>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => void copyShareLink()}
+              >
+                {copiedShare ? 'Link Copied' : 'Copy Share Link'}
+              </button>
               <button
                 type="button"
                 className="btn"
@@ -450,27 +621,6 @@ function App() {
               >
                 Download Chibi
               </button>
-            </article>
-
-            <article className="preview-card">
-              <h3>Player Icon</h3>
-              <div className="preview-media">
-                {tokenUri && !iconLoadError ? (
-                  <img
-                    key={animations.iconUrl}
-                    src={animations.iconUrl}
-                    alt="Bumpkin player icon preview"
-                    className="preview-image preview-icon-image"
-                    onError={() => setFailedIconFor(animations.iconUrl)}
-                  />
-                ) : (
-                  <p className="placeholder">
-                    {tokenUri
-                      ? 'Player icon endpoint returned no image for this loadout.'
-                      : 'Equip at least one item to preview.'}
-                  </p>
-                )}
-              </div>
               <button
                 type="button"
                 className="btn"
@@ -479,39 +629,101 @@ function App() {
               >
                 Download Icon
               </button>
-            </article>
+              <a
+                className="btn btn-ghost"
+                href={
+                  catalog?.sourceUrl ??
+                  'https://raw.githubusercontent.com/sunflower-land/sunflower-land/main/src/features/game/types/bumpkin.ts'
+                }
+                target="_blank"
+                rel="noreferrer"
+              >
+                View Live Source
+              </a>
+            </div>
           </div>
+        </section>
+      ) : (
+        <section className="workspace-grid npc-workspace">
+          <div className="panel npc-panel">
+            <div className="panel-header">
+              <div className="panel-title-row">
+                <h2>NPC Presets</h2>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={() => void loadNpcPresets(true)}
+                  disabled={npcLoading}
+                >
+                  {npcLoading ? 'Syncing...' : 'Refresh NPCs'}
+                </button>
+              </div>
+              <p className="meta-line">
+                {npcPresets.length} presets from the live Sunflower source
+              </p>
+            </div>
 
-          <div className="token-actions">
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => void copyToken()}
-              disabled={!tokenUri}
-            >
-              {copied ? 'Copied' : 'Copy Token URI'}
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost"
-              onClick={() => void copyShareLink()}
-            >
-              {copiedShare ? 'Link Copied' : 'Copy Share Link'}
-            </button>
-            <a
-              className="btn btn-ghost"
-              href={
-                catalog?.sourceUrl ??
-                'https://raw.githubusercontent.com/sunflower-land/sunflower-land/main/src/features/game/types/bumpkin.ts'
-              }
-              target="_blank"
-              rel="noreferrer"
-            >
-              View Live Source
-            </a>
+            <input
+              type="text"
+              className="picker-search npc-search"
+              placeholder="Search NPCs or items"
+              value={npcQuery}
+              onChange={(event) => setNpcQuery(event.target.value)}
+            />
+
+            {!!npcError && <p className="error-banner">{npcError}</p>}
+
+            {npcLoading ? (
+              <div className="placeholder">Loading NPC presets...</div>
+            ) : (
+              <div className="npc-grid">
+                {visibleNpcPresets.map((preset) => {
+                  const copied = copiedNpcName === preset.name
+
+                  return (
+                    <article key={preset.name} className="npc-card">
+                      <div className="panel-title-row npc-card-head">
+                        <h3>{preset.name}</h3>
+                        <span className="meta-line">
+                          {Object.keys(preset.equipped).length} items
+                        </span>
+                      </div>
+
+                      <PreviewPair
+                        loadout={preset.equipped}
+                        catalog={catalog}
+                        sizePx={120}
+                        compact
+                      />
+
+                      <div className="npc-card-actions">
+                        <button
+                          type="button"
+                          className="btn btn-ghost"
+                          onClick={() => void copyNpcPreset(preset.name, preset.equipped)}
+                        >
+                          {copied ? 'Copied' : 'Copy Items'}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn"
+                          onClick={() => applyLoadout(preset.equipped)}
+                        >
+                          Use Preset
+                        </button>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            )}
+
+            {!npcLoading && visibleNpcPresets.length === 0 && (
+              <div className="placeholder">No NPC presets match your search.</div>
+            )}
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <footer className="footer-note">
         Catalog updates are automatic from the Sunflower Land repository. If they
