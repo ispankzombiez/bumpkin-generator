@@ -47,6 +47,7 @@ export const SLOT_LABELS: Record<BumpkinSlot, string> = {
 }
 
 const ANIMATION_BASE_URL = 'https://animations.sunflower-land.com/animated_webp'
+const PROFILE_ICON_BASE_URL = 'https://animations.sunflower-land.com/bumpkin_image'
 
 export function buildTokenUriFromSelection(
   selected: SelectedLoadout,
@@ -74,15 +75,14 @@ export function buildTokenUriFromSelection(
 
 export function buildAnimationUrls(tokenUri: string) {
   if (!tokenUri) {
-    return { chibiUrl: '', iconUrl: '', iconFallbackUrl: '' }
+    return { chibiUrl: '', iconUrl: '' }
   }
 
   const base = `${ANIMATION_BASE_URL}/0_v1_${tokenUri}`
 
   return {
     chibiUrl: `${base}/idle-small`,
-    iconUrl: `${base}/idle`,
-    iconFallbackUrl: `${base}/idle-small`,
+    iconUrl: `${PROFILE_ICON_BASE_URL}/0_v1_${tokenUri}/100`,
   }
 }
 

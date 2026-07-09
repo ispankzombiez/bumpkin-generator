@@ -11,13 +11,13 @@
 }
 
 :root[data-theme='dark'] {
-  --text: #ecf2ff;
-  --muted: #9fb2d9;
-  --bg: #0f1728;
-  --panel: #141f35;
-  --card: #1a2742;
-  --border: #2f4268;
-  --accent: #73a0ff;
+  --text: #eceff4;
+  --muted: #a2a8b4;
+  --bg: #0f1013;
+  --panel: #17191f;
+  --card: #1e2129;
+  --border: #313744;
+  --accent: #8ea5d6;
 }
 
 * {
@@ -37,9 +37,9 @@ body {
 
 :root[data-theme='dark'] body {
   background:
-    radial-gradient(circle at 12% 18%, #20335d 0, transparent 30%),
-    radial-gradient(circle at 92% 5%, #3d2c54 0, transparent 23%),
-    linear-gradient(160deg, #0d1628 0%, #111d32 100%);
+    radial-gradient(circle at 16% 15%, #252933 0, transparent 33%),
+    radial-gradient(circle at 85% 10%, #1e2027 0, transparent 26%),
+    linear-gradient(160deg, #0d0e12 0%, #13151b 100%);
 }
 
 #root {

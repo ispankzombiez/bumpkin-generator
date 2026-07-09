@@ -30,7 +30,9 @@ function App() {
   const [selected, setSelected] = useState<SelectedLoadout>(() =>
     parseLoadoutFromSearch(window.location.search),
   )
-  const [filters, setFilters] = useState<Partial<Record<BumpkinSlot, string>>>({})
+  const [activeSlot, setActiveSlot] = useState<BumpkinSlot | null>(null)
+  const [slotQuery, setSlotQuery] = useState('')
+  const [failedIconFor, setFailedIconFor] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [copied, setCopied] = useState(false)
@@ -80,16 +82,23 @@ function App() {
     })
   }
 
-  function onFilterChange(slot: BumpkinSlot, value: string) {
-    setFilters((previous) => ({ ...previous, [slot]: value }))
-  }
-
   const tokenUri = useMemo(() => {
     if (!catalog) return ''
     return buildTokenUriFromSelection(selected, catalog.itemIds)
   }, [catalog, selected])
 
   const animations = useMemo(() => buildAnimationUrls(tokenUri), [tokenUri])
+  const iconLoadError = !!animations.iconUrl && failedIconFor === animations.iconUrl
+
+  const activeSlotItems = useMemo(() => {
+    if (!activeSlot) return []
+
+    const items = catalog?.itemsBySlot[activeSlot] ?? []
+    const query = slotQuery.trim().toLowerCase()
+
+    if (!query) return items
+    return items.filter((item) => item.toLowerCase().includes(query))
+  }, [activeSlot, catalog, slotQuery])
 
   const shareUrl = window.location.href
 
@@ -180,36 +189,31 @@ function App() {
 
           <div className="slot-grid">
             {SLOT_ORDER.map((slot) => {
-              const items = catalog?.itemsBySlot[slot] ?? []
-              const filter = (filters[slot] ?? '').trim().toLowerCase()
-              const filteredItems = filter
-                ? items.filter((item) => item.toLowerCase().includes(filter))
-                : items
+              const hasItems = (catalog?.itemsBySlot[slot]?.length ?? 0) > 0
 
               return (
-                <label key={slot} className="slot-field">
+                <div key={slot} className="slot-field">
                   <span>{SLOT_LABELS[slot]}</span>
-                  <input
-                    className="slot-filter"
-                    type="text"
-                    placeholder={`Search ${SLOT_LABELS[slot]}`}
-                    value={filters[slot] ?? ''}
-                    onChange={(event) => onFilterChange(slot, event.target.value)}
-                    disabled={loading || items.length === 0}
-                  />
-                  <select
-                    value={selected[slot] ?? ''}
-                    onChange={(event) => onSlotChange(slot, event.target.value)}
-                    disabled={loading || items.length === 0}
+                  <button
+                    type="button"
+                    className="slot-picker-button"
+                    disabled={loading || !hasItems}
+                    onClick={() => {
+                      setSlotQuery('')
+                      setActiveSlot(slot)
+                    }}
                   >
-                    <option value="">None</option>
-                    {filteredItems.map((item) => (
-                      <option key={`${slot}-${item}`} value={item}>
-                        {item}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                    {selected[slot] ?? `Select ${SLOT_LABELS[slot]}`}
+                  </button>
+                  <button
+                    type="button"
+                    className="slot-clear-button"
+                    disabled={!selected[slot]}
+                    onClick={() => onSlotChange(slot, '')}
+                  >
+                    Clear
+                  </button>
+                </div>
               )
             })}
           </div>
@@ -245,22 +249,20 @@ function App() {
 
             <article className="preview-card">
               <h3>Player Icon (idle)</h3>
-              {tokenUri ? (
+              {tokenUri && !iconLoadError ? (
                 <img
                   key={animations.iconUrl}
                   src={animations.iconUrl}
                   alt="Bumpkin player icon preview"
                   className="preview-image player-icon"
-                  onError={(event) => {
-                    const target = event.currentTarget
-                    if (target.dataset.fallbackUsed === '1') return
-
-                    target.dataset.fallbackUsed = '1'
-                    target.src = animations.iconFallbackUrl
-                  }}
+                  onError={() => setFailedIconFor(animations.iconUrl)}
                 />
               ) : (
-                <p className="placeholder">Equip at least one item to preview.</p>
+                <p className="placeholder">
+                  {tokenUri
+                    ? 'Player icon endpoint returned no image for this loadout.'
+                    : 'Equip at least one item to preview.'}
+                </p>
               )}
               <button
                 type="button"
@@ -308,6 +310,69 @@ function App() {
         Catalog updates are automatic from the Sunflower Land repository. If they
         add new wearables, they appear here on refresh.
       </footer>
+
+      {activeSlot && (
+        <div
+          className="picker-backdrop"
+          onClick={() => {
+            setActiveSlot(null)
+            setSlotQuery('')
+          }}
+        >
+          <div className="picker-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="picker-head">
+              <h3>Choose {SLOT_LABELS[activeSlot]}</h3>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => {
+                  setActiveSlot(null)
+                  setSlotQuery('')
+                }}
+              >
+                Close
+              </button>
+            </div>
+
+            <input
+              type="text"
+              className="picker-search"
+              placeholder={`Search ${SLOT_LABELS[activeSlot]}`}
+              value={slotQuery}
+              onChange={(event) => setSlotQuery(event.target.value)}
+              autoFocus
+            />
+
+            <div className="picker-list">
+              <button
+                type="button"
+                className={`picker-item ${!selected[activeSlot] ? 'active' : ''}`}
+                onClick={() => {
+                  onSlotChange(activeSlot, '')
+                  setActiveSlot(null)
+                  setSlotQuery('')
+                }}
+              >
+                None
+              </button>
+              {activeSlotItems.map((item) => (
+                <button
+                  type="button"
+                  key={`${activeSlot}-${item}`}
+                  className={`picker-item ${selected[activeSlot] === item ? 'active' : ''}`}
+                  onClick={() => {
+                    onSlotChange(activeSlot, item)
+                    setActiveSlot(null)
+                    setSlotQuery('')
+                  }}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }
