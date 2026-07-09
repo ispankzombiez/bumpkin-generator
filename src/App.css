@@ -446,12 +446,19 @@ h1 {
   align-items: flex-start;
 }
 
-.gif-live-preview {
-  image-rendering: pixelated;
+.gif-live-preview-stage {
   border: 1px solid var(--border);
   border-radius: 0.6rem;
   background: transparent;
-  object-fit: contain;
+  overflow: hidden;
+  padding: 0.35rem;
+  display: grid;
+  place-items: center;
+}
+
+.gif-live-preview-stack {
+  width: var(--sprite-width);
+  height: var(--sprite-width);
 }
 
 .placeholder {

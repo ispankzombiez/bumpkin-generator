@@ -2,6 +2,28 @@ import { GIFEncoder, applyPalette, quantize } from 'gifenc'
 
 export type GifConversionOptions = {
   scale?: number
+  auraBackUrl?: string
+  auraFrontUrl?: string
+  auraFrameWidth?: number
+  auraFrameHeight?: number
+  auraFrameCount?: number
+  auraFps?: number
+  auraBackTopRatio?: number
+  auraFrontTopRatio?: number
+}
+
+function loadImage(url: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+    image.crossOrigin = 'anonymous'
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error(`Could not load image: ${url}`))
+    image.src = url
+  })
+}
+
+function getAuraFrameIndex(elapsedMs: number, fps: number, frameCount: number) {
+  return Math.floor((elapsedMs / 1000) * fps) % Math.max(1, frameCount)
 }
 
 function findTransparentIndex(palette: number[][]) {
@@ -58,7 +80,45 @@ export async function convertAnimatedWebpToGif(
     throw new Error('Could not initialize canvas context')
   }
 
+  const auraFrameWidth = options.auraFrameWidth ?? 20
+  const auraFrameHeight = options.auraFrameHeight ?? 19
+  const auraFrameCount = options.auraFrameCount ?? 8
+  const auraFps = options.auraFps ?? 10
+  const auraBackTopRatio = options.auraBackTopRatio ?? -0.21
+  const auraFrontTopRatio = options.auraFrontTopRatio ?? 0.14
+
+  const [auraBackImage, auraFrontImage] = await Promise.all([
+    options.auraBackUrl
+      ? loadImage(options.auraBackUrl).catch(() => null)
+      : Promise.resolve(null),
+    options.auraFrontUrl
+      ? loadImage(options.auraFrontUrl).catch(() => null)
+      : Promise.resolve(null),
+  ])
+
+  const drawAuraLayer = (image: HTMLImageElement, topRatio: number, elapsedMs: number) => {
+    const maxFramesFromImage = Math.max(
+      1,
+      Math.floor(image.naturalWidth / auraFrameWidth),
+    )
+    const totalFrames = Math.max(1, Math.min(auraFrameCount, maxFramesFromImage))
+    const frameIndex = getAuraFrameIndex(elapsedMs, auraFps, totalFrames)
+
+    context.drawImage(
+      image,
+      frameIndex * auraFrameWidth,
+      0,
+      auraFrameWidth,
+      auraFrameHeight,
+      0,
+      width * topRatio,
+      width,
+      height,
+    )
+  }
+
   const gif = GIFEncoder()
+  let elapsedMs = 0
 
   for (let frameIndex = 0; frameIndex < frameCount; frameIndex += 1) {
     const result =
@@ -66,7 +126,16 @@ export async function convertAnimatedWebpToGif(
     const frame = result.image
 
     context.clearRect(0, 0, width, height)
+
+    if (auraBackImage) {
+      drawAuraLayer(auraBackImage, auraBackTopRatio, elapsedMs)
+    }
+
     context.drawImage(frame, 0, 0, width, height)
+
+    if (auraFrontImage) {
+      drawAuraLayer(auraFrontImage, auraFrontTopRatio, elapsedMs)
+    }
 
     const imageData = context.getImageData(0, 0, width, height)
     const palette = quantize(imageData.data, 256, {
@@ -87,6 +156,8 @@ export async function convertAnimatedWebpToGif(
       transparent: transparentIndex >= 0,
       transparentIndex: transparentIndex >= 0 ? transparentIndex : 0,
     })
+
+    elapsedMs += delayMs
 
     frame.close()
   }

@@ -448,7 +448,17 @@ function App() {
       if (!response.ok) throw new Error('Could not fetch chibi animation')
 
       const webpBlob = await response.blob()
-      const gifBlob = await convertAnimatedWebpToGif(webpBlob, { scale: gifScale })
+      const gifBlob = await convertAnimatedWebpToGif(webpBlob, {
+        scale: gifScale,
+        auraBackUrl: auraUrls.backUrl,
+        auraFrontUrl: auraUrls.frontUrl,
+        auraFrameWidth: AURA_FRAME_WIDTH,
+        auraFrameHeight: AURA_FRAME_HEIGHT,
+        auraFrameCount: AURA_FRAME_COUNT,
+        auraFps: AURA_FPS,
+        auraBackTopRatio: -0.21,
+        auraFrontTopRatio: 0.14,
+      })
 
       downloadBlob(gifBlob, 'bumpkin-chibi.gif')
       setChibiDownloadOpen(false)
@@ -882,15 +892,30 @@ function App() {
 
             <div className="gif-preview-wrap">
               <p className="meta-line">GIF Preview</p>
-              <img
-                src={animations.chibiUrl}
-                alt="GIF preview"
-                className="gif-live-preview"
-                style={{
-                  width: `${70 * gifScale}px`,
-                  height: `${70 * gifScale}px`,
-                }}
-              />
+              <div className="gif-live-preview-stage">
+                <div
+                  className="preview-chibi-stack gif-live-preview-stack"
+                  style={{ ['--sprite-width' as string]: `${70 * gifScale}px` }}
+                >
+                  {!!auraUrls.backUrl && (
+                    <AuraSprite
+                      src={auraUrls.backUrl}
+                      className="preview-aura-layer preview-aura-back"
+                    />
+                  )}
+                  <img
+                    src={animations.chibiUrl}
+                    alt="GIF preview"
+                    className="preview-chibi-image"
+                  />
+                  {!!auraUrls.frontUrl && (
+                    <AuraSprite
+                      src={auraUrls.frontUrl}
+                      className="preview-aura-layer preview-aura-front"
+                    />
+                  )}
+                </div>
+              </div>
             </div>
 
             {!!gifError && <p className="error-banner">{gifError}</p>}
