@@ -81,6 +81,7 @@ export async function convertAnimatedWebpToGif(
   if (!context) {
     throw new Error('Could not initialize canvas context')
   }
+  context.imageSmoothingEnabled = false
 
   const auraFrameWidth = options.auraFrameWidth ?? 20
   const auraFrameHeight = options.auraFrameHeight ?? 19

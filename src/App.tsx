@@ -654,7 +654,7 @@ function App() {
                 disabled={!tokenUri}
                 onClick={() => {
                   setGifError('')
-                  setGifScale(1)
+                  setGifScale(2)
                   setChibiDownloadOpen(true)
                 }}
               >
