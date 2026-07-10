@@ -565,6 +565,28 @@ h1 {
     flex-direction: column;
   }
 
+  .npc-grid {
+    grid-template-columns: 1fr;
+    gap: 0.8rem;
+  }
+
+  .npc-card {
+    padding: 0.75rem;
+  }
+
+  .npc-card-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .preview-card-head {
+    flex-wrap: wrap;
+  }
+
+  .preview-card-action {
+    width: 100%;
+  }
+
   .slot-grid,
   .preview-grid,
   .picker-list,
