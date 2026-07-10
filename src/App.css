@@ -80,6 +80,17 @@ h1 {
   color: var(--muted);
 }
 
+.help-farm-line {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.help-farm-link {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
 .topbar-actions {
   display: flex;
   flex-direction: column;

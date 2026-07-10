@@ -638,6 +638,17 @@ function App() {
               )}
             </span>
           </h1>
+          <p className="help-farm-line">
+            Please consider helping my{' '}
+            <a
+              href="https://sunflower-land.com/play/#/visit/1128976301583508"
+              target="_blank"
+              rel="noreferrer"
+              className="help-farm-link"
+            >
+              farm
+            </a>
+          </p>
           <p className="subtitle">
             Live catalog from Sunflower Land source, instant chibi + icon preview,
             and one-click downloads.
