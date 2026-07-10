@@ -606,6 +606,17 @@ h1 {
     width: 100%;
   }
 
+  .npc-card .preview-grid-compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+    --sprite-width: 120px !important;
+  }
+
+  .npc-card .preview-grid-compact .preview-media {
+    min-height: calc(var(--sprite-width) + 42px);
+    padding: 0.4rem;
+  }
+
   .token-actions {
     grid-template-columns: 1fr;
     display: grid;
