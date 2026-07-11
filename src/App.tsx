@@ -44,6 +44,7 @@ const DEFAULT_LOADOUT: SelectedLoadout = {
   necklace: 'Green Amulet',
   secondaryTool: 'Infernal Drill',
   aura: 'Wisp Aura',
+  wings: 'Bat Wings',
 }
 
 function getInitialTab(): AppTab {
