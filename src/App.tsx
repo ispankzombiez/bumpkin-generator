@@ -31,6 +31,9 @@ const AURA_FPS = 10
 const GIF_SCALE_MIN = 1
 const GIF_SCALE_MAX = 12
 const GIF_SCALE_DEFAULT = GIF_SCALE_MAX
+const ICON_SCALE_MIN = 1
+const ICON_SCALE_MAX = 12
+const ICON_SCALE_DEFAULT = ICON_SCALE_MAX
 
 const DEFAULT_LOADOUT: SelectedLoadout = {
   background: 'Deep Sea Salt Cave Background',
@@ -158,6 +161,11 @@ type PreviewActionPayload = {
 }
 
 type DownloadTarget = PreviewActionPayload & {
+  fileBaseName: string
+}
+
+type IconDownloadTarget = {
+  iconUrl: string
   fileBaseName: string
 }
 
@@ -321,6 +329,12 @@ function App() {
   const [gifError, setGifError] = useState('')
   const [gifScale, setGifScale] = useState(GIF_SCALE_DEFAULT)
   const [downloadTarget, setDownloadTarget] = useState<DownloadTarget | null>(null)
+  const [iconDownloadOpen, setIconDownloadOpen] = useState(false)
+  const [iconScale, setIconScale] = useState(ICON_SCALE_DEFAULT)
+  const [iconError, setIconError] = useState('')
+  const [convertingIconDownload, setConvertingIconDownload] = useState(false)
+  const [iconDownloadTarget, setIconDownloadTarget] =
+    useState<IconDownloadTarget | null>(null)
 
   useEffect(() => {
     void loadCatalog()
@@ -495,18 +509,6 @@ function App() {
     }
   }
 
-  async function downloadImage(url: string, filename: string) {
-    try {
-      const response = await fetch(url)
-      if (!response.ok) throw new Error('Asset download failed')
-
-      const blob = await response.blob()
-      downloadBlob(blob, filename)
-    } catch {
-      window.open(url, '_blank', 'noopener,noreferrer')
-    }
-  }
-
   function downloadBlob(blob: Blob, filename: string) {
     const blobUrl = URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -539,6 +541,45 @@ function App() {
       auraBackTopRatio: -0.21,
       auraFrontTopRatio: 0.14,
     }
+  }
+
+  function openIconDownload(iconUrl: string, fileBaseName: string) {
+    setIconDownloadTarget({ iconUrl, fileBaseName })
+    setIconError('')
+    setIconScale(ICON_SCALE_DEFAULT)
+    setIconDownloadOpen(true)
+  }
+
+  async function renderScaledIconBlob(iconUrl: string, scale: number) {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const loadedImage = new Image()
+      loadedImage.crossOrigin = 'anonymous'
+      loadedImage.onload = () => resolve(loadedImage)
+      loadedImage.onerror = () => reject(new Error('Could not load icon image'))
+      loadedImage.src = iconUrl
+    })
+
+    const canvas = document.createElement('canvas')
+    canvas.width = image.width * scale
+    canvas.height = image.height * scale
+
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('Could not create canvas context')
+
+    context.imageSmoothingEnabled = false
+    context.drawImage(image, 0, 0, canvas.width, canvas.height)
+
+    const webpBlob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          reject(new Error('Could not encode WebP blob'))
+          return
+        }
+        resolve(blob)
+      }, 'image/webp', 1)
+    })
+
+    return webpBlob
   }
 
   async function downloadChibiAsWebp() {
@@ -595,6 +636,29 @@ function App() {
       )
     } finally {
       setConvertingDownload(false)
+    }
+  }
+
+  async function downloadIconAsWebp() {
+    if (!iconDownloadTarget) return
+
+    setConvertingIconDownload(true)
+    setIconError('')
+
+    try {
+      const iconBlob = await renderScaledIconBlob(
+        iconDownloadTarget.iconUrl,
+        iconScale,
+      )
+
+      downloadBlob(iconBlob, `${iconDownloadTarget.fileBaseName}-icon.webp`)
+      setIconDownloadOpen(false)
+    } catch {
+      setIconError(
+        'Icon conversion failed in this browser. Try Chrome/Edge and retry.',
+      )
+    } finally {
+      setConvertingIconDownload(false)
     }
   }
 
@@ -776,7 +840,7 @@ function App() {
               iconActionLabel="Download"
               onIconAction={() => {
                 if (!mainPreviewActionPayload) return
-                void downloadImage(mainPreviewActionPayload.iconUrl, 'bumpkin-icon.webp')
+                openIconDownload(mainPreviewActionPayload.iconUrl, 'bumpkin')
               }}
               disableChibiAction={!tokenUri}
               disableIconAction={!tokenUri}
@@ -901,9 +965,9 @@ function App() {
                           if (!npcTokenUri) return
 
                           const npcAnimations = buildAnimationUrls(npcTokenUri)
-                          void downloadImage(
+                          openIconDownload(
                             npcAnimations.iconUrl,
-                            `npc-${sanitizeFileName(preset.name)}-icon.webp`,
+                            `npc-${sanitizeFileName(preset.name)}`,
                           )
                         }}
                         disableChibiAction={!catalog}
@@ -1042,7 +1106,7 @@ function App() {
                 onClick={() => void downloadChibiAsGif()}
                 disabled={convertingDownload}
               >
-                {convertingDownload ? 'Converting...' : 'GIF (Compatibility)'}
+                {convertingDownload ? 'Converting...' : 'GIF'}
               </button>
             </div>
 
@@ -1096,6 +1160,68 @@ function App() {
             </div>
 
             {!!gifError && <p className="error-banner">{gifError}</p>}
+          </div>
+        </div>
+      )}
+
+      {iconDownloadOpen && (
+        <div
+          className="picker-backdrop"
+          onClick={() => {
+            if (!convertingIconDownload) setIconDownloadOpen(false)
+          }}
+        >
+          <div className="picker-modal" onClick={(event) => event.stopPropagation()}>
+            <div className="picker-head">
+              <h3>Download Player Icon As</h3>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                onClick={() => setIconDownloadOpen(false)}
+                disabled={convertingIconDownload}
+              >
+                Close
+              </button>
+            </div>
+
+            <button
+              type="button"
+              className="btn"
+              onClick={() => void downloadIconAsWebp()}
+              disabled={convertingIconDownload}
+            >
+              {convertingIconDownload ? 'Preparing...' : 'WebP (Best Quality)'}
+            </button>
+
+            <div className="gif-controls">
+              <label htmlFor="icon-scale-slider">
+                Export Size: {iconScale}x
+              </label>
+              <input
+                id="icon-scale-slider"
+                type="range"
+                min={ICON_SCALE_MIN}
+                max={ICON_SCALE_MAX}
+                step={1}
+                value={iconScale}
+                onChange={(event) => setIconScale(Number(event.target.value))}
+                disabled={convertingIconDownload}
+              />
+            </div>
+
+            <div className="gif-preview-wrap">
+              <p className="meta-line">Preview</p>
+              <div className="gif-live-preview-stage">
+                <img
+                  src={iconDownloadTarget?.iconUrl ?? ''}
+                  alt="Icon preview"
+                  className="download-icon-preview"
+                  style={{ width: `${32 * iconScale}px` }}
+                />
+              </div>
+            </div>
+
+            {!!iconError && <p className="error-banner">{iconError}</p>}
           </div>
         </div>
       )}

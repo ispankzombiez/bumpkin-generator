@@ -490,6 +490,12 @@ h1 {
   height: var(--sprite-width);
 }
 
+.download-icon-preview {
+  display: block;
+  height: auto;
+  image-rendering: pixelated;
+}
+
 .placeholder {
   color: var(--muted);
   font-size: 0.9rem;
