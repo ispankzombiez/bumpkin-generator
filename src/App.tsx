@@ -29,7 +29,7 @@ const AURA_FRAME_HEIGHT = 19
 const AURA_FRAME_COUNT = 8
 const AURA_FPS = 10
 const GIF_SCALE_MIN = 1
-const GIF_SCALE_MAX = 6
+const GIF_SCALE_MAX = 12
 const GIF_SCALE_DEFAULT = GIF_SCALE_MAX
 
 const DEFAULT_LOADOUT: SelectedLoadout = {
@@ -564,7 +564,7 @@ function App() {
       setChibiDownloadOpen(false)
     } catch {
       setGifError(
-        'WebP conversion failed in this browser. Try Chrome/Edge, or use GIF for now.',
+        'Best quality WebP conversion failed in this browser. Try Chrome/Edge, or use GIF compatibility mode.',
       )
     } finally {
       setConvertingDownload(false)
@@ -591,7 +591,7 @@ function App() {
       setChibiDownloadOpen(false)
     } catch {
       setGifError(
-        'GIF conversion failed in this browser. Try Chrome/Edge, or use WebP for now.',
+        'GIF conversion failed in this browser. For best quality, use WebP.',
       )
     } finally {
       setConvertingDownload(false)
@@ -1034,17 +1034,22 @@ function App() {
                 onClick={() => void downloadChibiAsWebp()}
                 disabled={convertingDownload}
               >
-                {convertingDownload ? 'Preparing...' : 'WebP (Animated)'}
+                {convertingDownload ? 'Preparing...' : 'WebP (Best Quality)'}
               </button>
               <button
                 type="button"
-                className="btn"
+                className="btn btn-ghost"
                 onClick={() => void downloadChibiAsGif()}
                 disabled={convertingDownload}
               >
-                {convertingDownload ? 'Converting...' : 'GIF (Converted)'}
+                {convertingDownload ? 'Converting...' : 'GIF (Compatibility)'}
               </button>
             </div>
+
+            <p className="download-quality-note">
+              WebP is recommended for highest quality. GIF is lower quality and
+              intended for compatibility.
+            </p>
 
             <div className="gif-controls">
               <label htmlFor="gif-scale-slider">

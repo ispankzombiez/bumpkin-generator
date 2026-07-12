@@ -447,6 +447,12 @@ h1 {
   gap: 0.6rem;
 }
 
+.download-quality-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
 .gif-controls {
   display: flex;
   flex-direction: column;
