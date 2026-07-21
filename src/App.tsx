@@ -417,6 +417,22 @@ function App() {
     setSelected({})
   }
 
+  function randomizeAllSlots() {
+    if (!catalog) return
+
+    const nextLoadout: SelectedLoadout = {}
+
+    for (const slot of SLOT_ORDER) {
+      const options = catalog.itemsBySlot[slot]
+      if (!options || options.length === 0) continue
+
+      const randomIndex = Math.floor(Math.random() * options.length)
+      nextLoadout[slot] = options[randomIndex]
+    }
+
+    setSelected(nextLoadout)
+  }
+
   function applyLoadout(nextLoadout: SelectedLoadout) {
     setSelected(nextLoadout)
     setActiveTab('main')
@@ -770,6 +786,14 @@ function App() {
             <div className="panel-header">
               <div className="panel-title-row">
                 <h2>Equip</h2>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={randomizeAllSlots}
+                  disabled={loading || !catalog}
+                >
+                  Randomize
+                </button>
                 <button
                   type="button"
                   className="btn btn-ghost"
