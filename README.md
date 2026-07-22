@@ -48,3 +48,6 @@ Vite is configured with:
 `base: '/bumpkin-generator/'`
 
 If the repository name changes, update `vite.config.ts` accordingly.
+
+## An iSPANK Original
+https://wiki.sfl.world/en/user-pages/iSPANK's-Tools
